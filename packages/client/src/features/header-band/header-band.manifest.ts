@@ -3,6 +3,7 @@ import type { FeatureManifest } from '../../core/feature'
 export default {
   id: 'headerBand',
   order: 255,
+  load: 'deferred',
   contracts: [
     'api.window-controls', 'shell.fullscreen', 'shell.platform', 'shell.top-clearance', 'shell.windows-titlebar', 'shell.windows-menu',
     'shell.rightbar-toggle',

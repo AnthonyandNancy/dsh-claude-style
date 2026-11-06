@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-06",
+  "group": "improvements",
+  "order": 23,
+  "external": false,
+  "zh": "改善首屏装载，会话先画出来",
+  "en": "Load the header band and the view tabs in deferred chunks so the conversation paints first"
+}
