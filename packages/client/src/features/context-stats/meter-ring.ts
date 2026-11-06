@@ -385,6 +385,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       face.answered = percent
       paintRing(face)
     },
+    // The ring is drawn in the card, and its occupancy follows the session.
+    wakesOn: ['content', 'composer'],
     teardown,
   }
 

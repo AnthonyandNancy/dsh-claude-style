@@ -35,6 +35,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     close(reason?: CloseReason) {
       if (reason === 'composer') stats.close()
     },
+    // The meter and the panel stand on the card; the numbers follow the session,
+    // and the sidebar's own switch takes the feature down beside them.
+    wakesOn: ['content', 'composer', 'sidebar'],
   }
 
   // The composer restyle hides the host's stat dialogs only while this

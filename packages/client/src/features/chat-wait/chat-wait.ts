@@ -450,7 +450,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     }
   }
 
-  ui.chatWait = { measure: readTails, sync: syncInFrame, onCopyChange: sync }
+  // The line follows the conversation's running row, the card it stands beside
+  // and the viewport its tails are read in.
+  ui.chatWait = { measure: readTails, sync: syncInFrame, onCopyChange: sync, wakesOn: ['content', 'composer', 'viewport'] }
 
   return () => {
     stopped = true

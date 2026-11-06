@@ -478,6 +478,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
 
   ui.composer = {
     sync: syncComposer,
+    // The card, its attachments and its hint follow the conversation, the
+    // composer's own events, the viewport its layout is read at and the view
+    // the header's tab strip selects.
+    wakesOn: ['content', 'composer', 'viewport', 'header'],
     /** Whether the page shows the hero composer, as of this pass. */
     isHero() { return hero },
     /** The hero page's composer card as of this pass, or null off the hero page. */
