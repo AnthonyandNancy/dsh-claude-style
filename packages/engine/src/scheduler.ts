@@ -450,10 +450,11 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   })
   schedule()
 
-  // Copy that follows the clock (the hero greeting rolls over on the hour) has
-  // no DOM change to wake a pass. The syncs skip identical writes, so this
-  // cannot feed the observer. The greeting reads the clock, so the pass counts
-  // as content: a reason-less ask here would wake every handle once a minute.
+  // Copy that follows the clock (the hero greeting rolls over on the hour, the
+  // rate judgement counts its minutes down) has no DOM change to wake a pass.
+  // The syncs skip identical writes, so this cannot feed the observer. A tick
+  // can reach any reader of the time, so it names no reason and wakes every
+  // handle — once a minute, which is the cost this clock always had.
   let clockTimer: ReturnType<typeof setInterval> | null = null
 
   function stopClock() {
@@ -464,7 +465,7 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
 
   function startClock() {
     if (clockTimer !== null || pageHidden()) return
-    clockTimer = setInterval(() => schedule({ reason: 'content' }), 60000)
+    clockTimer = setInterval(() => schedule(), 60000)
   }
 
   // The clock stops while the page is off screen so it cannot wake a frame
