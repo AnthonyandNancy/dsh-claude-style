@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-06",
+  "group": "improvements",
+  "order": 20,
+  "external": false,
+  "zh": "改善长会话的页面变化分发",
+  "en": "Route each batch of page changes only to the subscriptions that can read it"
+}

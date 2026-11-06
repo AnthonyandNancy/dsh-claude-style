@@ -57,6 +57,8 @@ const mutationSubscriptions: MutationSubscription[] = []
  * lookup rather than a scan of the array once per subscription per record.
  */
 const mutationSubscriptionSet = new Set<MutationSubscription>()
+/** Every subscription by the node it watches, so one record meets only its own target's subscribers. */
+const subscriptionsByTarget = new Map<Node, Set<MutationSubscription>>()
 let mutationObserver: MutationObserver | null = null
 
 /**
@@ -203,7 +205,25 @@ function deliver(subscription: MutationSubscription, records: MutationRecord[]) 
   try { subscription.callback(selected) } catch (error) { reportError(error) }
 }
 
-function routeRecords(records: MutationRecord[], audience: MutationSubscription[] = mutationSubscriptions.slice()) {
+/**
+ * The subscriptions a batch can reach: those whose target holds at least one
+ * record, or is page-wide. Returned in subscription order, so callbacks keep
+ * the order separate observers made in that order would have had.
+ */
+function audienceFor(records: MutationRecord[]): MutationSubscription[] {
+  const wanted = new Set<MutationSubscription>()
+  for (const [target, subscriptions] of subscriptionsByTarget) {
+    for (const record of records) {
+      if (target === record.target || target.contains(record.target) || (pageWide(target) && !record.target.isConnected)) {
+        for (const subscription of subscriptions) wanted.add(subscription)
+        break
+      }
+    }
+  }
+  return mutationSubscriptions.filter(subscription => wanted.has(subscription))
+}
+
+function routeRecords(records: MutationRecord[], audience: MutationSubscription[] = audienceFor(records)) {
   // A batch a session switch mounts is scanned after the paint: its callbacks
   // are idempotent passes, and nothing the reader is looking at in that frame
   // is drawn by them. A subscription whose writes the paint reads asks for
@@ -284,12 +304,18 @@ export function subscribeMutations(target: Node, options: MutationOptions, callb
   const subscription = { target, options, callback }
   mutationSubscriptions.push(subscription)
   mutationSubscriptionSet.add(subscription)
+  const into = subscriptionsByTarget.get(target) ?? new Set<MutationSubscription>()
+  into.add(subscription)
+  subscriptionsByTarget.set(target, into)
   refreshMutationObserver(subscription)
   return () => {
     const at = mutationSubscriptions.indexOf(subscription)
     if (at === -1) return
     mutationSubscriptions.splice(at, 1)
     mutationSubscriptionSet.delete(subscription)
+    const set = subscriptionsByTarget.get(target)
+    set?.delete(subscription)
+    if (set !== undefined && set.size === 0) subscriptionsByTarget.delete(target)
     refreshMutationObserver()
   }
 }
@@ -309,6 +335,8 @@ export interface MatchList<T extends Element> {
    * run after the batch — while a departure is settled on the read itself.
    */
   all(): T[]
+  /** How many times the set has changed since the registry was made. */
+  version(): number
   /** Drop this reader; the registry leaves with its last reader. */
   release(): void
 }
@@ -317,6 +345,8 @@ interface MatchRegistry {
   items: Set<Element>
   /** The document-ordered array handed out, or null while the set has changed since the last read. */
   ordered: Element[] | null
+  /** How many times the set has changed since the registry was made. */
+  version: number
   /** Readers told of a change in the batch's own callback, before the browser computes style. */
   listeners: Set<() => void>
   readers: number
@@ -339,6 +369,7 @@ function registryFor(selector: string): MatchRegistry {
   const registry: MatchRegistry = {
     items: new Set(document.querySelectorAll(selector)),
     ordered: null,
+    version: 0,
     listeners: new Set(),
     readers: 1,
     // Only added nodes are examined, and an element that left the document is
@@ -407,6 +438,7 @@ function registryFor(selector: string): MatchRegistry {
     }
     if (changed) {
       registry.ordered = null
+      registry.version += 1
       // A listener that leaves or joins here changes the set for the next batch only.
       for (const listener of [...registry.listeners]) listener()
     }
@@ -437,6 +469,7 @@ export function observeMatches<T extends Element>(selector: string, onChange?: (
       registry.items = new Set(registry.ordered)
       return registry.ordered as T[]
     },
+    version() { return registry.version },
     release() {
       if (released) return
       released = true

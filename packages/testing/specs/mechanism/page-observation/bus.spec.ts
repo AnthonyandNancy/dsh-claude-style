@@ -347,3 +347,30 @@ test('a registry listener hears every change of the set and nothing after its re
   await settle()
   expect(heard).toEqual([1, 2])
 })
+
+test('a record reaches the subscriptions whose target holds it, and no others', async () => {
+  const left = host()
+  const right = host()
+  const seen: Record<string, string[]> = { left: [], right: [], body: [] }
+  cleanups.push(subscribeMutations(left, { childList: true, subtree: true }, records => seen.left.push(...records.map(record => (record.addedNodes[0] as Element).className))))
+  cleanups.push(subscribeMutations(right, { childList: true, subtree: true }, records => seen.right.push(...records.map(record => (record.addedNodes[0] as Element).className))))
+  cleanups.push(subscribeMutations(document.body, { childList: true, subtree: true }, records => seen.body.push(...records.map(record => (record.addedNodes[0] as Element).className))))
+  const inside = document.createElement('div')
+  inside.className = 'left-child'
+  left.append(inside)
+  await settle()
+  expect(seen.left).toEqual(['left-child'])
+  expect(seen.right).toHaveLength(0)
+  expect(seen.body).toContain('left-child')
+})
+
+test('a detached subscription target hears a change inside its subtree', async () => {
+  const root = document.createElement('div')
+  const inside = document.createElement('div')
+  root.append(inside)
+  const seen: MutationRecord[] = []
+  cleanups.push(subscribeMutations(root, { childList: true, subtree: true }, records => seen.push(...records)))
+  inside.append(document.createElement('span'))
+  await settle()
+  expect(seen.map(record => record.target)).toEqual([inside])
+})
