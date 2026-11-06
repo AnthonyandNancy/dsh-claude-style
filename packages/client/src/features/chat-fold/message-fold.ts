@@ -65,10 +65,15 @@ export function createMessageFold(requestPass: () => void) {
   let decided = new WeakMap<Element, boolean>()
   /** The reading width the last pass was taken at; -1 until one is taken. */
   let measuredWidth = -1
+  /** The rows' registry version each phase last consumed, kept apart: measure() runs before sync() in one frame and must not hide it. */
+  let measuredRows = -1
+  let syncedRows = -1
 
   /** Forget every height read and ask for a pass: a change of copy re-wraps the words. */
   function invalidate() {
     decided = new WeakMap()
+    measuredRows = -1
+    syncedRows = -1
     requestPass()
   }
 
@@ -114,7 +119,11 @@ export function createMessageFold(requestPass: () => void) {
   function watchSize(bubble: HTMLElement) {
     if (sizes.has(bubble)) return
     sizes.set(bubble, observeSize(bubble, () => {
+      // The row's set has not moved, so the set versions are forgotten with the
+      // height: the next pass has to read this bubble and write it again.
       decided.delete(bubble)
+      measuredRows = -1
+      syncedRows = -1
       requestPass()
     }))
   }
@@ -216,6 +225,9 @@ export function createMessageFold(requestPass: () => void) {
 
   /** Read every bubble the fold has no answer for (the pass's read phase, D40). */
   function measure() {
+    const version = rows.version()
+    if (version === measuredRows) return
+    measuredRows = version
     for (const row of rows.all()) {
       const bubble = bubbleOf(row)
       if (bubble !== null) decide(bubble)
@@ -228,6 +240,9 @@ export function createMessageFold(requestPass: () => void) {
    * after the other features' writes, a style recalculation on every pass.
    */
   function sync() {
+    const version = rows.version()
+    if (version === syncedRows) return
+    syncedRows = version
     for (const row of rows.all()) {
       const bubble = bubbles.get(row)
       if (bubble !== undefined && bubble.isConnected) apply(bubble)

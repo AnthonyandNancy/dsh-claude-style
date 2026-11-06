@@ -246,6 +246,9 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
 
   /** The pie's colours this frame's read phase took, until the pass's sync uses them. */
   let pieColours: PieColours | null = null
+  /** The meters and panel this frame paints, read in measure() and written in sync(). */
+  let passMeters: HTMLElement[] = []
+  let passPanel: HTMLElement | null = null
 
   /** Stop following the projections (a different session, or the teardown). */
   function releaseWatch() {
@@ -356,9 +359,8 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
     // Every composer card draws its own meter: a sub-agent's docked
     // conversation stands beside the main one, and each card's meter opens its
     // own panel. The first meter keeps the reading this pass paints.
-    const meters = contextMeters()
+    const meters = passMeters
     const meter = meters[0] ?? null
-    for (let i = 0; i < meters.length; i += 1) markContextMeter(meters[i])
     // Every ring the skin drew is a face of its own: the press it takes is
     // delivered to its own card's trigger, and the panel it opens hangs from it
     // (stats-binding.ts::faceFor reads the ring off the trigger's card).
@@ -411,7 +413,7 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
     // The panel is both surfaces' popover, so its own bindings — the stamp the
     // stylesheet reads and the reading that lines it up with the meter — are
     // taken in either position.
-    const panel = contextPanel()
+    const panel = passPanel
     if (panel !== null) binding.bindPanel(panel)
     renderNumbers()
   }
@@ -425,6 +427,9 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
      * them a second time (D40).
      */
     measure() {
+      passMeters = contextMeters()
+      for (let i = 0; i < passMeters.length; i += 1) markContextMeter(passMeters[i])
+      passPanel = contextPanel()
       const meter = findContextMeter()
       // The ring the skin draws reads its own colours (meter-ring.ts): only a
       // meter that keeps its place, drawn as a pie, is read here.

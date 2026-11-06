@@ -67,6 +67,9 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
   let pass = 0
   /** The shell's locale when the stand-in was last drawn. */
   let drawnLocale = ''
+  /** The placeholders' and cards' registry versions the last stand-in sweep read. */
+  let readPlaceholders = -1
+  let readStandInCards = -1
   /** Whether a composition in flight held a pass back, so the settle after it has work to do. */
   let held = false
   /**
@@ -114,11 +117,11 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
   }
 
   /** Put the hint in the words this page wants, now. */
-  function write(hero: boolean, active: boolean) {
+  function write(hero: boolean, active: boolean, force = false) {
     held = false
     const target = targetHint(hero)
     rewriteHint(target, active)
-    syncStandIn(target, active)
+    syncStandIn(target, active, force)
   }
 
   /**
@@ -182,12 +185,19 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
    * pass that drew it, and only a later pass takes it back once the card has
    * moved on. A card that holds a hint of the host's keeps it, and the sweep
    * takes the skin's away: one field never shows two hints.
+   *
+   * `force` is for a caller that knows the cards changed inside while their set
+   * did not — an attachment rail arriving — so the sweep runs despite the versions.
    */
-  function syncStandIn(target: string, active: boolean) {
+  function syncStandIn(target: string, active: boolean, force = false) {
     pass += 1
     const draw = active && activeLocale() !== drawnLocale
     drawnLocale = activeLocale()
     const found = cards.all()
+    const version = placeholders.version()
+    if (!force && !draw && version === readPlaceholders && cards.version() === readStandInCards) return
+    readPlaceholders = version
+    readStandInCards = cards.version()
     const standIns = placeholders.all()
     // The answer stands at the head of the pass: a card whose hint the host has
     // drawn keeps it, and the stand-in beside it goes whichever pass reads it.
@@ -237,15 +247,15 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
      * The restyle's off branch is what takes the skin's placeholders away
      * again, so this runs whether or not the restyle applies.
      */
-    sync(hero: boolean, active: boolean) {
+    sync(hero: boolean, active: boolean, attachmentsChanged = false) {
       if (heldByComposition()) return
-      write(hero, active)
+      write(hero, active, attachmentsChanged)
     },
     /** A composer input or composition event: only the stand-in can have changed. */
     onInput(hero: boolean, active: boolean) {
       if (heldByComposition()) return
       held = false
-      syncStandIn(targetHint(hero), active)
+      syncStandIn(targetHint(hero), active, true)
     },
     /**
      * A composition has landed: the pass it held back runs now. The host's flag

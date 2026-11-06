@@ -55,6 +55,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let studioHome = false
   /** The hero page's composer card, or null off the hero page, as of the last pass. */
   let heroCard: HTMLElement | null = null
+  /** The cards' registry version the last variant write answered for, and the page state it read. */
+  let readCards = -1
+  let readVariantState = ''
   /** The idle hint's own words, and the synthetic placeholder that carries them. */
   const cards = observeComposerCards()
   const placeholders = observeComposerPlaceholders()
@@ -175,13 +178,17 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   function syncAttachments(cards: readonly HTMLElement[]) {
     passCount += 1
     const tiles = new Set<Element>()
+    /** Whether a card's own attachment mark moved: the stand-in sweep has to see it. */
+    let changed = false
     for (const card of cards) {
       const held = [...heldNodes.keys()].some(node => lastHolder.get(node) === card)
       const carries = active && (card.querySelector(ATTACHMENT_PRESENT) !== null || held)
       if (carries) {
+        if (card.getAttribute(ATTACHED_ATTR) !== 'true') changed = true
         setAttributeIfChanged(card, ATTACHED_ATTR, 'true')
         for (const tile of card.querySelectorAll(ATTACHMENT_TILES)) tiles.add(tile)
       } else {
+        if (card.hasAttribute(ATTACHED_ATTR)) changed = true
         card.removeAttribute(ATTACHED_ATTR)
       }
     }
@@ -209,6 +216,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
         if (!node.isConnected && !heldNodes.has(node)) heldNodes.set(node, passCount)
       }
     }
+    return changed
   }
 
   const CONTROL_ATTR = 'data-dsh-claude-control'
@@ -348,14 +356,26 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   function syncComposer() {
     readState()
     const found = cards.all()
-    heroCard = hero ? found.find(card => card.closest(SIDEBAR_CHAT_SELECTOR) === null) ?? null : null
-    syncVariant(found)
+    const version = cards.version()
+    // The variant follows the cards' own set and the hero/studio state the
+    // preferences decide; the root marks and the controls also follow the host's
+    // phase and the viewport, which neither carries.
+    const variantState = `${hero ? 'hero' : 'chat'}:${studioHome ? 'studio' : 'stacked'}`
+    if (version !== readCards || variantState !== readVariantState || !found.every(card => card.hasAttribute(COMPOSER_VARIANT_ATTRIBUTE))) {
+      readCards = version
+      readVariantState = variantState
+      heroCard = hero ? found.find(card => card.closest(SIDEBAR_CHAT_SELECTOR) === null) ?? null : null
+      syncVariant(found)
+    }
     document.body.toggleAttribute(COMPOSER_ATTR, active)
     syncMobilePortrait(found)
-    syncAttachments(found)
+    // The attachment marks follow what is inside each card, which the card
+    // registry's version does not carry; a mark that moved reaches the stand-in
+    // sweep even when no card or placeholder arrived.
+    const attachmentsChanged = syncAttachments(found)
     // Before the draft mark: the hint the skin adds is part of what "empty"
     // means to the stylesheet's `card:has(placeholder)` rules.
-    placeholderCopy.sync(hero, active)
+    placeholderCopy.sync(hero, active, attachmentsChanged)
     syncDraftState(found)
     syncControls(found)
     responsive.sync(found, active)
