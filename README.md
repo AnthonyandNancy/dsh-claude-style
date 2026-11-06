@@ -102,6 +102,8 @@ dsh plugin --profile web add Nwflower/dsh-claude-style#dist      # GitHub 发布
 | 文档 | 说明 |
 | --- | --- |
 | [设计令牌](docs/STYLE.md) | 配色、字体、形状、动效与层级 |
+| [性能方案](docs/PERFORMANCE.md) | 长会话与流式输出下的开销来源、改法与验收读数 |
+| [修改计划](docs/PERFORMANCE-PLAN.md) | 按提案拆分的任务、失败测试、验证命令与提交边界 |
 | [架构决策](docs/adr/README.md) | 每条方向一页：背景、决定、后果与重审条件 |
 | [更新日志](docs/CHANGELOG.md) | 版本历史 |
 | [贡献指南](CONTRIBUTING.md) | 构建、提交规范与回归工具 |

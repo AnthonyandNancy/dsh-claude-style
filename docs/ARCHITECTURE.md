@@ -63,6 +63,10 @@ React 与宿主包按名字导入，始终外部化，由宿主提供。只有�
 
 `npm run build` 把 `packages/client/src/` 与 `packages/host/src/` 编成 `lib/`：宿主半边是 `lib/host/index.js`，浏览器半边是单文件的 `lib/client.js`，资源落在 `lib/assets/`。宿主加载器读前者，把后者交给页面，页面带着引导数据调用 `apply(ctx)`。
 
+## 性能
+
+长会话、流式输出与连续输入下的开销，按它落在哪一层来读：`packages/engine/src/bus.ts` 的分发、`packages/engine/src/scheduler.ts` 的帧内同步、各功能读写布局的时机、样式表与合成路径、清单里的延迟装载。`docs/PERFORMANCE.md` 把这几层各自的改法、可见结果不变的依据与验收读数写在一起；性能改动先读它，再按 D40、D9、D76 的约束落代码。
+
 ## 检查
 
 每条不变量都有一个检查守着，它们跟着源码走，不跟着文档走：`npm run lint` 管不需要构建的规则，`npm run build` 在打包时检查导入图、选择器、样式表作用域与资源对应关系，逻辑层与机制层的规范（`npm test`）经声明的逻辑面与各包的公开模块核对函数与机制，冒烟（`npm run smoke`）在替代宿主页面上核对产物的装载与拆除，行为层的规范（`npm run behaviour`）在同一页面上核对读者看得见的结果，端到端通道（`npm run verify -- --e2e`）在真实宿主上核对行为，各档都由 `npm run verify` 发起(D77)。一条规则能被工具执行时，它写在检查里，不写在文档里(D48)。

@@ -103,6 +103,8 @@ To enable them, install the `.ttf` files on your system, or copy them into `$DSH
 | Document | Contents |
 | --- | --- |
 | [Design tokens](docs/STYLE.md) | The palette, typography, shape, motion and layer rules |
+| [Performance plan](docs/PERFORMANCE.md) | Where long sessions and streaming output spend their time, what to change and the readings that accept it |
+| [Implementation plan](docs/PERFORMANCE-PLAN.md) | The tasks, failing tests, verification commands and commit boundaries split from each proposal |
 | [Architecture decisions](docs/adr/README.md) | One page per direction: background, decision, consequences, revisiting conditions |
 | [Changelog](docs/CHANGELOG.md) | Version history |
 | [Contributing](CONTRIBUTING.md) | Building from `packages/client/src/`, commit conventions, and the screenshot and regression tooling |
