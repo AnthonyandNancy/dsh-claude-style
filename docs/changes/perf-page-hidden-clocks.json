@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-06",
+  "group": "improvements",
+  "order": 24,
+  "external": false,
+  "zh": "改善页面离开屏幕时的脚本时钟占用",
+  "en": "Stop the script clocks while the page is off screen and restart them on the return"
+}

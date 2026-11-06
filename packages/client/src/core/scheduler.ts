@@ -3,6 +3,7 @@ import type { FeatureHandle, SchedulerCalls } from '@dsh-claude-style/engine/sch
 import { onHdslLoaded, onUsernameLoaded } from '../shared/identity'
 import { onModelCopyLoaded } from '../features/model/model-copy'
 import { recordPassReading } from './frame-metrics'
+import { subscribePageHidden } from './page-visibility'
 import { loadPrefs, refreshMotionAttribute, subscribePrefs } from './prefs'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FooterHandle } from '../features/account/account-footer'
@@ -85,6 +86,7 @@ export function installScheduler(ctx: HostContext, ui: Ui, features: HandleName[
   return installEngineScheduler<HandleName>(ctx, ui, features, {
     copyChange: [subscribePrefs, onModelCopyLoaded],
     refresh: [onUsernameLoaded, onHdslLoaded],
+    pageVisibility: listener => subscribePageHidden(() => listener()),
     start: loadPrefs,
     systemMotionChanged: refreshMotionAttribute,
     reportPass: recordPassReading,

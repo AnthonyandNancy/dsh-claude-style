@@ -13,7 +13,7 @@ import { adoptPrefs, adoptSettingsForm, clearPrefsAttributes, disposePrefsBindin
 import { reportFeatureFailure } from '@dsh-claude-style/engine/scheduler'
 import { installScheduler } from './core/scheduler'
 import type { HandleName, Ui } from './core/scheduler'
-import { installPageVisibility } from './core/page-visibility'
+import { installPageVisibility, pageHidden } from './core/page-visibility'
 import { mountStylesheet, parkForeignSheets } from './core/stylesheet'
 import { peerPresent, subscribePeerPresence } from './shared/peer-plugin'
 import { pageOwner, subscribePageOwner } from './shared/visual-owner'
@@ -26,13 +26,14 @@ import { FEATURES } from 'virtual:dsh-claude-style/features'
 import { BUILD_ID, PASS_READINGS } from 'virtual:dsh-claude-style/generated'
 
 // The engine runs on the skin's own vocabulary: the attributes this package
-// writes, and the two answers only the skin can give (D73). Handed over before
+// writes, and the answers only the skin can give (D73). Handed over before
 // anything installs, and before the module-scope sweep below reads any of it.
 adoptSkin({
   packageName: PACKAGE_NAME,
   quiet: QUIET_ATTR,
   readerHold: READER_HOLD_ATTR,
   motionReduced,
+  pageHidden,
 })
 
 // At module scope on purpose: the sweep runs right after this factory

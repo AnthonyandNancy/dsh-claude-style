@@ -2,6 +2,7 @@ import { COMPOSER_CARD_SELECTOR, COMPOSER_INPUT_SELECTOR, COMPOSER_PLACEHOLDER_S
 import type { HostAccountService, HostAssistantStep, HostBundleListAnswer, HostChatSnapshot, HostChatTarget, HostConfigFormsService, HostConversationService, HostInventoryAnswer, HostLocaleService, HostModelDirectoriesService, HostPluginBundle, HostServiceLookup, HostOutlineTurn, HostRunningCall, HostSession, HostSessionsService, HostSessionRenameAnswer, HostShortcutsService, HostSlotOptions, HostSlotsService, HostTurn, HostUiConversationService, HostUiSessionService, HostWorkspacesService, HostWorkspaceViewStore } from '@dsh-claude-style/contracts/services'
 import { observeMatches, subscribeMutations } from './bus'
 import { closestFrom, shown } from './dom'
+import { skin } from './skin'
 
 /**
  * The host's client context (cordis), handed to `apply` and to every feature.
@@ -34,6 +35,14 @@ export type { HostText } from '@dsh-claude-style/contracts/services'
 /** The scope `inject` opened: disposing it runs the effects registered in it. */
 export interface HostFiber {
   dispose(): void
+}
+
+/**
+ * Whether the page is off screen, answered by the skin's visibility owner
+ * through the seam (packages/engine/src/skin.ts, D73).
+ */
+export function pageHidden(): boolean {
+  return skin().pageHidden()
 }
 
 /**

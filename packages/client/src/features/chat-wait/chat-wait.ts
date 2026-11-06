@@ -2,6 +2,7 @@ import { QUIET_ATTR } from '../../constants'
 import { observeMatches } from '@dsh-claude-style/engine/bus'
 import { requestFrame } from '@dsh-claude-style/engine/frame'
 import { closestConversationSession, conversationSessionId, findChatTarget } from '@dsh-claude-style/engine/host'
+import { pageHidden, subscribePageHidden } from '../../core/page-visibility'
 import { hostChatCopy, hostChatSeat } from '../../core/i18n'
 import { readPrefs, subscribePrefs } from '../../core/prefs'
 import { buildElement, writeTextInPlace } from '@dsh-claude-style/engine/dom'
@@ -403,22 +404,36 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       if (typeof key === 'string' && !live.has(key)) wording.delete(key)
     }
     // Yielded rows stay watched: style-only ownership changes must restore the line.
-    if (rows.length > 0 && timer === null) {
-      timer = window.setInterval(() => {
-        if (cancelTick !== null) return
-        cancelTick = requestFrame({
-          read: readTails,
-          write() {
-            cancelTick = null
-            syncInFrame()
-          },
-        })
-      }, TICK_MS)
-    } else if (rows.length === 0 && timer !== null) {
+    if (rows.length > 0) startTick()
+    else if (timer !== null) {
       window.clearInterval(timer)
       timer = null
     }
   }
+
+  function startTick() {
+    if (timer !== null || pageHidden() || stopped) return
+    timer = window.setInterval(() => {
+      if (cancelTick !== null) return
+      cancelTick = requestFrame({
+        read: readTails,
+        write() {
+          cancelTick = null
+          syncInFrame()
+        },
+      })
+    }, TICK_MS)
+  }
+
+  // The line's own clock: off screen it holds, and the return restarts it.
+  const stopVisibility = subscribePageHidden(hidden => {
+    if (hidden) {
+      if (timer !== null) window.clearInterval(timer)
+      timer = null
+    } else if (runningRows.all().length > 0 && timer === null) {
+      startTick()
+    }
+  })
 
   function sync() {
     if (stopped) return
@@ -443,6 +458,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     cancelTailPass = null
     tailReadings = null
     offDetailChoice()
+    stopVisibility()
     runningRows.release()
     for (const exit of badgeTimers) window.clearTimeout(exit)
     badgeTimers.clear()

@@ -5,6 +5,7 @@ import { hostRemoteSession } from '@dsh-claude-style/engine/host'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { HostRemoteListAnswer, HostSessionRow } from '@dsh-claude-style/contracts/services'
 import type { UsageAnswer, UsageReport } from '@dsh-claude-style/contracts/usage'
+import { pageHidden, subscribePageHidden } from '../../core/page-visibility'
 import { homeRefreshDue } from './usage-refresh'
 import type { HomeRefreshReason } from './usage-refresh'
 
@@ -140,7 +141,7 @@ export function createHomeUsage(ctx: HostContext) {
       usage.computing = body.computing === true
       usage.error = body.error === undefined ? null : body.error
       emit()
-      if (usage.computing) {
+      if (usage.computing && !pageHidden()) {
         if (polls >= HOME_POLL_MAX) return
         polls += 1
         stopPolling()
@@ -272,6 +273,15 @@ export function createHomeUsage(ctx: HostContext) {
     })
   }
 
+  // The roll-up's poll waits while the page is off screen; coming back reads
+  // once and the answer starts its next poll from there. A page already off
+  // screen when the store starts has no poll to carry across either.
+  const stopVisibility = subscribePageHidden(hidden => {
+    if (hidden) { stopPolling(); return }
+    loadUsage(true)
+  })
+  if (pageHidden()) stopPolling()
+
   return {
     state() { return usage },
     list() { return listSummary },
@@ -284,6 +294,7 @@ export function createHomeUsage(ctx: HostContext) {
     loadList: loadSessionSummary,
     stop() {
       disposed = true
+      stopVisibility()
       stopPolling()
       listeners.length = 0
     },

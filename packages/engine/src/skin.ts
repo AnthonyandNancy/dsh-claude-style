@@ -2,11 +2,11 @@
  * The seam between the engine and the skin it serves (D73).
  *
  * The engine talks to the host's page: it watches it, it schedules frames, it
- * reads and moves host elements. Two of the things it needs are the skin's own
- * — the attribute vocabulary the skin writes and the answers only the skin can
- * give — so the skin hands them over once, before anything installs. The engine
- * never guesses one: a part asked before the hand-over throws rather than
- * reading a default that would quietly watch the wrong nodes.
+ * reads and moves host elements. The attribute vocabulary it writes and the
+ * answers only the skin can give are the skin's own, so the skin hands them
+ * over once, before anything installs. The engine never guesses one: a part
+ * asked before the hand-over throws rather than reading a default that would
+ * quietly watch the wrong nodes.
  */
 
 /** What the engine needs from the skin it serves. */
@@ -25,6 +25,8 @@ export interface SkinSeam {
   readerHold: string
   /** Whether the skin must hold its animations still right now. */
   motionReduced(): boolean
+  /** Whether the page is off screen right now, answered by the skin's one visibility owner. */
+  pageHidden(): boolean
 }
 
 let current: SkinSeam | null = null

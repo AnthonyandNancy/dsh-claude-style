@@ -2,6 +2,7 @@ import * as React from 'react'
 import { CHAT_REVEAL_OFF, CHAT_REVEAL_ON } from '../../constants'
 import { motionMs } from '../../shared/motion'
 import { PreviewCards } from '../../shared/preview-cards'
+import { visibleInterval } from '../../shared/visible-interval'
 import { copy } from './copy'
 import type { PreviewOption } from '../../shared/preview-cards'
 import type { Prefs } from '../../constants'
@@ -37,11 +38,10 @@ function RevealPicker(props: SettingsRowView) {
     const ticks = count + Math.max(0, Math.round((period - arrival) / gap))
     let next = 0
     setTick(0)
-    const timer = window.setInterval(() => {
+    return visibleInterval(() => {
       next = next + 1 >= ticks ? 0 : next + 1
       setTick(next)
     }, gap)
-    return () => window.clearInterval(timer)
   }, [sample])
   const shown = Math.min(tick, Array.from(sample).length)
   const card = React.createElement(

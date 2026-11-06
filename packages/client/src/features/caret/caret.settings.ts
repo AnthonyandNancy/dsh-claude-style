@@ -3,6 +3,7 @@ import { CARET_MOTION_OFF, CARET_MOTION_TYPING } from '../../constants'
 import { motionMs } from '../../shared/motion'
 import { inPagePixels } from '../../shared/page-zoom'
 import { PreviewCards } from '../../shared/preview-cards'
+import { visibleInterval } from '../../shared/visible-interval'
 import { copy } from './copy'
 import type { PreviewOption } from '../../shared/preview-cards'
 import type { Prefs } from '../../constants'
@@ -51,11 +52,10 @@ function CaretPicker(props: SettingsRowView) {
     const ticks = pieces.length + Math.max(0, Math.round((period - typing) / gap))
     let next = 0
     setAt(0)
-    const timer = window.setInterval(() => {
+    return visibleInterval(() => {
       next = next + 1 >= ticks ? 0 : next + 1
       setAt(Math.min(next, pieces.length))
     }, gap)
-    return () => window.clearInterval(timer)
   }, [sample])
   React.useLayoutEffect(() => {
     const picker = pickerRef.current

@@ -1,4 +1,5 @@
 import { subscribeMutations } from './bus'
+import { pageHidden } from './host'
 import { skin } from './skin'
 import { COMPOSER_SELECTOR, CONVERSATION_SCROLL_SELECTOR, CONVERSATION_SESSION_ATTRIBUTE, CONVERSATION_SESSION_SELECTOR, FOLLOW_THRESHOLD_PX, PROCESS_BODY_SELECTOR } from '@dsh-claude-style/contracts/dom'
 import { SCROLL_KEYS, SUBMISSION_ROW_SELECTOR, conversationScroller, findFollowTailButton, isScrollbarStrip } from './chat-dom'
@@ -546,7 +547,7 @@ export function handBackFollow(source: ScrollSource, options?: { stillWanted?: (
   if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 0.5) easeScrollToEndFor(scroller, source, stillWanted)
   let rounds = 0
   const look = () => {
-    if (!stillWanted() || rounds >= FOLLOW_LOOK_ROUNDS) {
+    if (pageHidden() || !stillWanted() || rounds >= FOLLOW_LOOK_ROUNDS) {
       if (onSettled !== null) onSettled()
       return
     }

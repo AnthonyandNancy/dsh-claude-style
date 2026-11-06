@@ -18,6 +18,7 @@ export const TEST_SKIN: SkinSeam = {
   quiet: QUIET_ATTR,
   readerHold: READER_HOLD_ATTR,
   motionReduced: () => document.body.getAttribute(MOTION_ATTR) === MOTION_REDUCED,
+  pageHidden: () => document.visibilityState === 'hidden',
 }
 
 /** The marks the part walk writes under, and the anchors its three menu regions stand in. */
