@@ -162,6 +162,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   ui.manualUnread = {
     sync,
     skipOnContentOnly: true,
+    // The badge stands on a sidebar row; no other change moves it.
+    wakesOn: ['sidebar'],
     onPointerDown: activity,
     onKey: (event) => {
       if (hasSessionBaseline || ['Enter', ' ', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) activity(event.target)

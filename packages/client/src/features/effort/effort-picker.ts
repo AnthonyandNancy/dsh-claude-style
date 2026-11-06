@@ -287,6 +287,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
     // The level sits in the composer's seat box, outside the column a streaming
     // batch touches, so such a batch skips this pass (D40).
     skipOnContentOnly: true,
+    // The level's words and its box are read off the composer card's seat.
+    wakesOn: ['composer'],
     /**
      * The level's card closes on an outside press and on Esc. Composer focus
      * is NOT one of its dismiss routes (the model picker closes there, this

@@ -459,7 +459,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   // The row it reads lives in the conversation header, never inside the column
   // a streaming batch touches, so such a batch skips this pass (D40). The boxes
   // are read in the pass's read phase and written in its write phase.
-  ui.headerBand = { measure, sync, skipOnContentOnly: true }
+  ui.headerBand = { measure, sync, skipOnContentOnly: true, wakesOn: ['header', 'viewport'] }
   registerRightbarClose()
 
   return () => {

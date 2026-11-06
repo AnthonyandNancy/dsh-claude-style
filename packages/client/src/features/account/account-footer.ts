@@ -569,8 +569,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     /** The read phase: the entry row's box, so the pass's writes do not force a layout under it. */
     measure: measureAccountRow,
     // The footer sits in the sidebar, outside the column a streaming batch
-    // touches, so such a batch skips this pass (D40).
+    // touches, so such a batch skips this pass (D40). The avatar follows the
+    // account and the composer card the row sits above.
     skipOnContentOnly: true,
+    wakesOn: ['sidebar', 'composer'],
     /**
      * The self-built drawer's dismiss routes: 'outside' (a press the footer
      * does not own), 'escape' and 'composer'. The shipped scheduler only

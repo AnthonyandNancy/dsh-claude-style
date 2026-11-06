@@ -545,6 +545,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
     // The seat sits on the composer, outside the column a streaming batch
     // touches, so such a batch skips this pass (D40).
     skipOnContentOnly: true,
+    // The seat's words and box are read off the composer card.
+    wakesOn: ['composer'],
     /**
      * Close both levels of the picker. The Escape key first takes a query in
      * level 2's field back — the card the reader typed into stays up until a

@@ -53,6 +53,8 @@ export function install(_ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     tracked.clear()
     present.clear()
   }
-  ui.sidebarStatus = { measure, sync, skipOnContentOnly: true, teardown }
+  // The rows sit in the sidebar, beside a composer card whose docking the
+  // status marker reads, so both changes wake this pass and a content batch does not.
+  ui.sidebarStatus = { measure, sync, skipOnContentOnly: true, wakesOn: ['sidebar', 'composer'], teardown }
   return teardown
 }

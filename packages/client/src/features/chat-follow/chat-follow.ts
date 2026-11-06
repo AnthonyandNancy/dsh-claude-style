@@ -563,6 +563,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     reposition() {
       placeFollowTail(tailStamp, cards.all())
     },
+    // The button follows the conversation column and the composer card it sits above.
+    wakesOn: ['content', 'composer', 'viewport'],
   }
   return () => {
     document.body.removeAttribute(CHAT_FOLLOW_ATTR)

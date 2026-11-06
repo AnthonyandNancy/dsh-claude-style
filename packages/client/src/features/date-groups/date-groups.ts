@@ -477,7 +477,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     }
   }
 
-  ui.dateGroups = { sync: arrange, skipOnContentOnly: true, teardown }
+  // The groups hang off the sidebar's session tree, so only a sidebar change
+  // can move a section.
+  ui.dateGroups = { sync: arrange, skipOnContentOnly: true, wakesOn: ['sidebar'], teardown }
 
   // 日期视图是默认的那一档：装上就排成日期段落，读者按下铃铛才换回宿主的视图。
   enable()

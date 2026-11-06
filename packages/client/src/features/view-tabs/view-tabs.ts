@@ -335,7 +335,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   // The strip lives in the conversation header, outside the column a streaming
   // batch touches, so such a batch skips this pass (D40). The boxes are read in
   // the pass's read phase and written in its write phase.
-  ui.viewTabs = { measure, sync, skipOnContentOnly: true }
+  ui.viewTabs = { measure, sync, skipOnContentOnly: true, wakesOn: ['header', 'viewport'] }
 
   /**
    * Whether a strip already draws the way the frame's paint reads it: its own

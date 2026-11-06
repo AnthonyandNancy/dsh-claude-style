@@ -61,6 +61,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       stream.sync()
       messageFold.reposition()
     },
+    // The rows it folds live in the conversation column, their boxes move with
+    // the composer card, and a resize re-wraps their words.
+    wakesOn: ['content', 'composer', 'viewport'],
   }
   return () => {
     delete ui.chatFold

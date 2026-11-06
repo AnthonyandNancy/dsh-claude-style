@@ -1,4 +1,4 @@
-import { closestComposerCard, findComposerCard, findConversationScroller, hostLocale } from './host'
+import { closestComposerCard, findComposerCard, findConversationScroller, hostLocale, pageHidden } from './host'
 import type { HostContext } from './host'
 import { observeSize, subscribeMutations } from './bus'
 import { requestFrame } from './frame'
@@ -15,6 +15,12 @@ import { skin } from './skin'
 
 /** Why the scheduler asks a feature to close. Features ignore the reasons they do not act on. */
 export type CloseReason = 'outside' | 'escape' | 'composer'
+
+/**
+ * Why a pass was asked for. A feature declares the reasons its measurements
+ * read; a change it cannot read skips it for that frame.
+ */
+export type WakeReason = 'content' | 'sidebar' | 'composer' | 'header' | 'viewport' | 'other'
 
 /**
  * A feature's handle on the shared `ui` registry. Every hook is optional: the
@@ -35,6 +41,8 @@ export interface FeatureHandle {
    * answer is not certain — the pass then runs as it always did.
    */
   skipOnContentOnly?: boolean
+  /** The changes this feature's measurement and sync read; a change outside them skips its turn. */
+  wakesOn?: readonly WakeReason[]
   /** Whether the press landed inside the feature's own DOM; a press it does not own closes it through `close('outside')`. */
   owns?(target: Node): boolean
   /** Every press. */
@@ -65,7 +73,7 @@ export interface FeatureHandle {
 /** The two calls on the registry that are no feature's: the entry and the scheduler put them there. */
 export interface SchedulerCalls {
   /** Ask for a pass on the next frame (installScheduler). */
-  schedule?: () => void
+  schedule?: (options?: { contentOnly?: boolean, reason?: WakeReason }) => void
   /** Switch one feature off for the rest of this generation. */
   retire: (name: string) => void
 }
@@ -82,6 +90,11 @@ export interface SchedulerSources {
   copyChange: ChangeSource[]
   /** Changes that only ask for a pass: the account's name, the launcher's contract. */
   refresh: ChangeSource[]
+  /**
+   * The page left or came back to the screen. A clock that only exists to
+   * refresh copy cannot be allowed to wake a frame while nobody is looking.
+   */
+  pageVisibility?: ChangeSource
   /**
    * Read the stored preferences. A form that is already served answers
    * synchronously, so it runs once the sources above are subscribed.
@@ -120,6 +133,8 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   let stopped = false
   /** Whether everything that asked for the pending pass was a batch inside the conversation column. */
   let passContentOnly = false
+  /** The reasons this pass was asked for; null means the pass must wake every handle. */
+  let passReasons: Set<WakeReason> | null = null
 
   /** The handle a feature registered under `name`, while that feature is installed. */
   function handleOf(name: Name): FeatureHandle | undefined {
@@ -210,7 +225,8 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   // Fixed popovers are anchored to their trigger, and page scroll or a resize
   // moves that anchor, so whichever is open re-resolves it in the same frame.
   // Scroll fires per frame at most, and a window drag fires far faster: the
-  // callbacks are coalesced into one frame the way the pass is (D40).
+  // callbacks are coalesced into one frame the way the pass is (D40). The pass
+  // of the same change carries the reason its readers declare.
   let cancelViewportFrame: (() => void) | null = null
   function onFixedPopoverViewportChange() {
     if (cancelViewportFrame !== null) return
@@ -223,6 +239,7 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
         dispatch('reposition', 'viewport')
       },
     })
+    schedule({ reason: 'viewport' })
   }
   window.addEventListener('resize', onFixedPopoverViewportChange)
   window.addEventListener('scroll', onFixedPopoverViewportChange, true)
@@ -331,10 +348,14 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   }
 
   /** Chat streaming mutates the tree constantly; coalesce to one pass a frame. */
-  function schedule(options?: { contentOnly?: boolean }) {
+  function schedule(options?: { contentOnly?: boolean, reason?: WakeReason }) {
     if (stopped) return
+    if (options?.reason !== undefined) {
+      // A reason-less ask already made this pass whole-page; it stays whole-page.
+      if (!scheduled || passReasons !== null) (passReasons ??= new Set<WakeReason>()).add(options.reason)
+    } else passReasons = null
     if (scheduled) {
-      // A reason that reads the whole page joins the pass already queued.
+      // A reason-less ask is no evidence that any feature can be skipped.
       if (options?.contentOnly !== true) passContentOnly = false
       return
     }
@@ -348,10 +369,18 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     let measured = false
     let measures = 0
     let syncs = 0
-    const runMeasures = (content: boolean) => {
+    /** Whether one handle's turn is skipped: a batch it cannot read, or a reason it does not declare. */
+    const skips = (handle: FeatureHandle | undefined, content: boolean, reasons: Set<WakeReason> | null) => {
+      if (handle === undefined) return true
+      if (content && handle.skipOnContentOnly === true) return true
+      if (handle.wakesOn === undefined || reasons === null) return false
+      for (const reason of handle.wakesOn) if (reasons.has(reason)) return false
+      return true
+    }
+    const runMeasures = (content: boolean, reasons: Set<WakeReason> | null) => {
       for (const name of features) {
-        if (content && handleOf(name)?.skipOnContentOnly === true) continue
         const handle = handleOf(name)
+        if (skips(handle, content, reasons)) continue
         if (handle === undefined || typeof handle.measure !== 'function') continue
         measures += 1
         runMeasure(name)
@@ -361,23 +390,26 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
       read() {
         measured = true
         if (stopped) return
-        runMeasures(passContentOnly)
+        // The write phase reads the same reasons; only it clears them.
+        runMeasures(passContentOnly, passReasons)
       },
       write() {
         scheduled = false
         cancelPass = null
         if (stopped) return
         const content = passContentOnly
+        const reasons = passReasons
         passContentOnly = false
+        passReasons = null
         if (!measured) {
           // The write phase is running without this frame's read phase (the
           // task was queued after the frame's reads): measure now, before any
           // feature writes.
-          runMeasures(content)
+          runMeasures(content, reasons)
         }
         for (const name of features) {
-          if (content && handleOf(name)?.skipOnContentOnly === true) continue
           const handle = handleOf(name)
+          if (skips(handle, content, reasons)) continue
           if (handle === undefined || typeof handle.sync !== 'function') continue
           syncs += 1
           runSync(name)
@@ -409,13 +441,39 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     // aria-selected.
     attributeFilter: ['aria-label', 'aria-selected'],
     skipQuiet: true,
-  }, records => schedule({ contentOnly: contentOnly(records) }))
+  }, records => {
+    // Only a batch the conversation column holds alone is known to be content:
+    // a change in the header, the sidebar or the account menu reads other
+    // features, so it names no reason and wakes every handle.
+    if (contentOnly(records)) schedule({ contentOnly: true, reason: 'content' })
+    else schedule()
+  })
   schedule()
 
   // Copy that follows the clock (the hero greeting rolls over on the hour) has
   // no DOM change to wake a pass. The syncs skip identical writes, so this
-  // cannot feed the observer.
-  const clockTimer = setInterval(() => schedule(), 60000)
+  // cannot feed the observer. The greeting reads the clock, so the pass counts
+  // as content: a reason-less ask here would wake every handle once a minute.
+  let clockTimer: ReturnType<typeof setInterval> | null = null
+
+  function stopClock() {
+    if (clockTimer === null) return
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
+
+  function startClock() {
+    if (clockTimer !== null || pageHidden()) return
+    clockTimer = setInterval(() => schedule({ reason: 'content' }), 60000)
+  }
+
+  // The clock stops while the page is off screen so it cannot wake a frame
+  // nobody sees; the return starts it again.
+  const stopPageVisibility = sources.pageVisibility?.(() => {
+    if (pageHidden()) stopClock()
+    else startClock()
+  }) ?? null
+  startClock()
 
   return () => {
     // A pass already requested would run against torn-down features and build
@@ -427,7 +485,8 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     if (cancelViewportFrame !== null) cancelViewportFrame()
     cancelViewportFrame = null
     scheduled = false
-    clearInterval(clockTimer)
+    stopClock()
+    if (stopPageVisibility !== null) stopPageVisibility()
     window.removeEventListener('resize', onFixedPopoverViewportChange)
     window.removeEventListener('scroll', onFixedPopoverViewportChange, true)
     if (localeUnsubscribe !== null) localeUnsubscribe()

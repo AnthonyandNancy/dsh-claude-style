@@ -273,7 +273,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     { options: { name: ACTIONS_SLOT, id: 'claude-style-edit-sidebar', order: 10 }, component: EditSidebarRow },
   ], 'dsh-claude-style: sidebar entries')
 
-  ui.sidebarEntries = { sync, skipOnContentOnly: true }
+  // The panel rows are part of the sidebar, and nothing else changes what this pass hides.
+  ui.sidebarEntries = { sync, skipOnContentOnly: true, wakesOn: ['sidebar'] }
 
   return () => {
     if (rowsFiber !== null) rowsFiber.dispose()
