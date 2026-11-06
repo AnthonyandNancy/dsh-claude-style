@@ -247,7 +247,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (stopSize !== null) stopSize()
     stopSize = null
     watched = row
-    if (row !== null) stopSize = observeSize(row, () => { ui.schedule?.() })
+    // No mutation moves this row when the sidebar collapses: its column's
+    // width animates, and the band's own placement follows that width.
+    if (row !== null) stopSize = observeSize(row, () => { ui.schedule?.({ reason: 'viewport' }) })
   }
 
   /**

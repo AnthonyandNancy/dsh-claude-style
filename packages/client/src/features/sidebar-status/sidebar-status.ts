@@ -9,7 +9,7 @@ import type manifest from './sidebar-status.manifest'
 
 /** Repaint the native indicator at the trailing edge; the host remains its state owner (D43). */
 export function install(_ctx: HostContext, ui: FeatureUi<typeof manifest>) {
-  const schedule = () => ui.schedule?.()
+  const schedule = () => ui.schedule?.({ reason: 'sidebar' })
   const rows = observeMatches<HTMLElement>(`${SIDEBAR_SLOT_SELECTOR} [data-dsh-claude-part~="session-row"]`, schedule)
   const tracked = new Map<HTMLElement, RightSessionStatus>()
   let present = new Set<HTMLElement>()

@@ -20,7 +20,7 @@ let descriptionSequence = 0
 /** Persist a separate reminder; the host retains ownership of automatic completion-unread state. */
 export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let disposed = false
-  const changed = () => { if (disposed === false) ui.schedule?.() }
+  const changed = () => { if (disposed === false) ui.schedule?.({ reason: 'sidebar' }) }
   const rows = observeMatches<HTMLElement>(`${SIDEBAR_SLOT_SELECTOR} [data-dsh-claude-part~="session-row"]`, changed)
   const marks = new Map<HTMLElement, UnreadRowMark>()
   const tracker = createUnreadVisitTracker()

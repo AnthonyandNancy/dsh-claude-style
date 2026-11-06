@@ -404,7 +404,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * 交回收尾，页面上的标记不会留在一个已经停下来的特性后面。
    */
   function schedule() {
-    ui.schedule?.()
+    ui.schedule?.({ reason: 'sidebar' })
   }
 
   /**

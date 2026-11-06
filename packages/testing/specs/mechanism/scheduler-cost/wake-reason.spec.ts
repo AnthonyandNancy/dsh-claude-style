@@ -51,6 +51,32 @@ test('a handle that declares no reason still wakes for every change', async () =
   expect(calls).toEqual(['anything'])
 })
 
+/** The ask a case makes before the frame runs, as the reason it names. */
+type Ask = 'content' | 'sidebar' | 'none'
+
+/** Two handles on different reasons, asked in one frame and read at its end. */
+async function twoReasonRun(asks: Ask[]) {
+  const calls: string[] = []
+  const ui = installed({
+    retire: () => {},
+    chat: { wakesOn: ['content'], sync: () => calls.push('chat') },
+    side: { wakesOn: ['sidebar'], sync: () => calls.push('side') },
+  }, ['chat', 'side'], () => {})
+  await frames(1)
+  calls.length = 0
+  for (const ask of asks) (ui as any).schedule(ask === 'none' ? undefined : { reason: ask })
+  await frames(2)
+  return calls
+}
+
+test('two reasons in one frame wake both of their handles', async () => {
+  expect(await twoReasonRun(['content', 'sidebar'])).toEqual(['chat', 'side'])
+})
+
+test('a reason asked after a reason-less ask does not narrow the pass back', async () => {
+  expect(await twoReasonRun(['none', 'sidebar'])).toEqual(['chat', 'side'])
+})
+
 test('a reason-less ask clears the queued reasons rather than widening them', async () => {
   const calls: string[] = []
   const ui = installed({

@@ -85,7 +85,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
     scope.effect(() => () => { slots = null }, 'dsh-claude-style: model seat registry')
     // Rows already hidden by a winner that arrived before this scope did wait
     // on the pass this arrival asks for.
-    ui.schedule?.()
+    ui.schedule?.({ reason: 'composer' })
   })
   let modelBodySig = ''
   /**
@@ -537,7 +537,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
    * wakes (a seat resize) a frame later instead.
    */
   if (typeof ctx.on === 'function') {
-    ctx.effect(() => ctx.on!('slots/changed', () => { ui.schedule?.() }), 'dsh-claude-style: model seat ledger')
+    ctx.effect(() => ctx.on!('slots/changed', () => { ui.schedule?.({ reason: 'composer' }) }), 'dsh-claude-style: model seat ledger')
   }
 
   ui.model = {

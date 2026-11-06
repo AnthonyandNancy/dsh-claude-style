@@ -265,7 +265,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   const slotsFiber = withSlots(ctx, (served, scope) => {
     slots = served
     scope.effect(() => () => { slots = null }, 'dsh-claude-style: sidebar entries registry')
-    ui.schedule?.()
+    ui.schedule?.({ reason: 'sidebar' })
   })
   // Ordered around the host's own rows (order 0): the hidden entries before them, the dialog's row after.
   const rowsFiber = registerSlotEntries(ctx, [

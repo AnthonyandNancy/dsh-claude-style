@@ -1,3 +1,4 @@
+import { COMPOSER_CARD_SELECTOR, CONVERSATION_HEADER_SLOT_SELECTOR, CONVERSATION_SCROLL_SELECTOR, SIDEBAR_SLOT_SELECTOR } from '@dsh-claude-style/contracts/dom'
 import { closestComposerCard, findComposerCard, findConversationScroller, hostLocale, pageHidden } from './host'
 import type { HostContext } from './host'
 import { observeSize, subscribeMutations } from './bus'
@@ -331,6 +332,23 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   }
 
   /**
+   * Why one record can matter, by the region its target stands in: a header
+   * change wakes the features that read the header, a sidebar change the ones
+   * that read the sidebar, and so on. A record in no known region names no
+   * reason, which wakes every handle — the safe answer for a change the
+   * scheduler cannot place.
+   */
+  function reasonOf(record: MutationRecord): WakeReason | null {
+    const target = record.target instanceof Element ? record.target : record.target.parentElement
+    if (target === null) return null
+    if (target.closest(CONVERSATION_HEADER_SLOT_SELECTOR) !== null) return 'header'
+    if (target.closest(SIDEBAR_SLOT_SELECTOR) !== null) return 'sidebar'
+    if (target.closest(COMPOSER_CARD_SELECTOR) !== null) return 'composer'
+    if (target.closest(CONVERSATION_SCROLL_SELECTOR) !== null) return 'content'
+    return null
+  }
+
+  /**
    * Whether every record of the batch lies inside the conversation column.
    * A removal's target is the parent it left, which is still the column's
    * node, so removed nodes are read off the target alone.
@@ -442,11 +460,22 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     attributeFilter: ['aria-label', 'aria-selected'],
     skipQuiet: true,
   }, records => {
-    // Only a batch the conversation column holds alone is known to be content:
-    // a change in the header, the sidebar or the account menu reads other
-    // features, so it names no reason and wakes every handle.
-    if (contentOnly(records)) schedule({ contentOnly: true, reason: 'content' })
-    else schedule()
+    // A batch names every reason its records answer to, so a sidebar change
+    // wakes the sidebar's readers without widening the whole page. A record
+    // the scheduler cannot place names no reason, and that ask wakes every
+    // handle — the safe answer for a change whose readers are unknown.
+    const column = contentOnly(records)
+    const reasons = new Set<WakeReason>()
+    for (const record of records) {
+      const found = reasonOf(record)
+      if (found === null) {
+        reasons.clear()
+        break
+      }
+      reasons.add(found)
+    }
+    if (reasons.size === 0) { schedule(column ? { contentOnly: true } : undefined); return }
+    for (const reason of reasons) schedule({ contentOnly: column, reason })
   })
   schedule()
 
