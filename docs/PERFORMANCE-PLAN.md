@@ -1,6 +1,8 @@
 # 性能与流畅度修改计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
+
+> **状态（2026-11-07）：** Task 0、1、2、3、6、7、8 已实现并提交；Task 5 只落地了关闭卡片的滤镜（标题扫光与色流的两版候选都改变了读者看到的东西，按「可见结果不变」放弃，样式表保持原样）；Task 4 未实现，理由见文末 `## 实施结果`。
 
 **Goal:** 在不改变功能、动画、界面与样式的前提下，按 `docs/PERFORMANCE.md` 的八项提案削减长会话与流式输出下的分发、帧内同步、布局读写、合成与首屏装载成本。
 
@@ -67,7 +69,7 @@
 - Consumes: `installScheduler<Name>(ctx, ui, features, sources)` 的现有签名。
 - Produces: `SchedulerSources` 新增可选字段 `reportPass?(reading: { measures: number, syncs: number }): void`；packages/client/src/core/frame-metrics.ts 导出 `PassReading` 类型与 `recordPassReading(reading: PassReading): void`、`readPassReadings(): PassReading[]`、`clearPassReadings(): void`。`SchedulerSources.reportPass` 与 `PassReading` 的形状相同，但不互相引用：`packages/engine` 不导入浏览器半边的模块（D73）。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 /**
@@ -108,12 +110,12 @@ test('a pass reports one measure and one sync per handle that implements them', 
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/frame-counts.spec.ts`
 Expected: FAIL，`installScheduler` 的第四个参数的 `reportPass` 不在类型里，或回调从未被调用。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 在 `packages/engine/src/scheduler.ts` 的 `SchedulerSources` 里加字段并照实计数：
 
@@ -221,12 +223,12 @@ export function installScheduler(ctx: HostContext, ui: Ui, features: HandleName[
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/frame-counts.spec.ts`
 Expected: PASS，`readings` 为 `[{ measures: 1, syncs: 2 }]`。
 
-- [ ] **Step 5: 接进长会话场景，读出同一回合的两个计数**
+- [x] **Step 5: 接进长会话场景，读出同一回合的两个计数**
 
 构建把「是否暴露读数」写进生成模块，发布的包不暴露。`scripts/build.mjs` 的 `generatedModule({ … })` 里加一行：
 
@@ -280,14 +282,14 @@ if (PASS_READINGS) Object.assign(window, { __dshPassReadings: { read: readPassRe
     },
 ```
 
-- [ ] **Step 6: 跑一遍长会话，记下改动前的读数**
+- [x] **Step 6: 跑一遍长会话，记下改动前的读数**
 
 `verify` 的构建闸门不传这个变量，所以读数构建由这一步自己写，再单跑场景：
 
 Run: `DSH_CLAUDE_STYLE_PASS_READINGS=1 npm run build` 与 `DSH_LONG_SESSION_TURNS=8 node packages/testing/e2e.mjs --scenario longSession --jobs 1`
 Expected: 场景通过；`rows`、`queries`、`p95`、`long tasks` 与新增的 `passes` 打印出来。把六个数抄进提交说明，作为后续任务的对照基线。跑完后再执行一次 `npm run build`，把不带读数入口的正式产物写回 `lib/`。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/client/src/core/frame-metrics.ts packages/client/src/core/scheduler.ts packages/engine/src/scheduler.ts packages/client/src/entry.ts packages/client/src/generated.d.ts scripts/build.mjs vitest.config.mjs packages/testing/specs/mechanism/scheduler-cost/frame-counts.spec.ts packages/testing/long-session.mjs packages/testing/data/bounds.json
@@ -306,7 +308,7 @@ git commit -m "test(perf): 记录一帧内的调度与布局读取次数"
 - Consumes: `subscribeMutations(target, options, callback)` 的现有签名。
 - Produces: 内部函数 `audienceFor(records: MutationRecord[]): MutationSubscription[]`；`subscribeMutations` 的返回签名不变。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 在 `packages/testing/specs/mechanism/page-observation/bus.spec.ts` 末尾追加：
 
@@ -328,12 +330,12 @@ test('a record reaches the subscriptions whose target holds it, and no others', 
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run packages/testing/specs/mechanism/page-observation/bus.spec.ts -t "a record reaches the subscriptions whose target holds it"`
 Expected: 两个收件断言先通过（现有实现已按 `subtree` 过滤），所以还要读分发次数。在 `deliver()` 里临时加一行 `(window as any).__deliveries = ((window as any).__deliveries ?? 0) + 1`，用例末尾加 `expect((window as any).__deliveries).toBe(2)`，并在用例开头把它清零。当前实现把这一条记录逐个交给三个订阅，读数为 3，断言失败；分桶后只剩左侧与正文两个订阅，读数为 2。计数在 Step 3 里删掉。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 在 `packages/engine/src/bus.ts` 的模块级状态旁加目标索引：
 
@@ -396,17 +398,17 @@ function routeRecords(records: MutationRecord[], audience: MutationSubscription[
 
 `refreshMutationObserver` 里那段 `queueMicrotask(() => routeRecords(pending, audience))` 保持原样：它显式传受众，仍只交给变化前就存在的订阅。`subscriptionsByTarget` 的登记与注销必须与 `mutationSubscriptions` 同步，否则受众会漏掉订阅或留下已注销的订阅。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/testing/specs/mechanism/page-observation/bus.spec.ts`
 Expected: 全部 PASS；新增用例里右侧订阅收到 0 条，正文订阅仍收到整条；既有「callbacks run in subscription order」「a page-wide subscription hears a change made inside a node removed in the same batch」与「a page-wide subscription hears nothing that changed outside its own subtree」三条仍通过。
 
-- [ ] **Step 5: 跑冒烟，确认整页行为不变**
+- [x] **Step 5: 跑冒烟，确认整页行为不变**
 
 Run: `node packages/testing/smoke.mjs --quick --jobs 2`
 Expected: 全部通过；`scheduler idle once settled (0 passes in 1 s)` 仍为 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/engine/src/bus.ts packages/testing/specs/mechanism/page-observation/bus.spec.ts
@@ -435,7 +437,7 @@ git commit -m "perf(bus): 按订阅目标把一批变化分给读得到它的订
 - Consumes: Task 0 的 `reportPass`。
 - Produces: `type WakeReason = 'content' | 'sidebar' | 'composer' | 'header' | 'viewport' | 'other'`；`FeatureHandle.wakesOn?: readonly WakeReason[]`；`schedule(options?: { contentOnly?: boolean, reason?: WakeReason })`。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 /**
@@ -505,12 +507,12 @@ test('a later ask without a reason joins the queued pass as a whole-page change'
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/wake-reason.spec.ts`
 Expected: FAIL——`schedule` 的选项里没有 `reason`，`wakesOn` 不被读取，聊天与侧栏都会收到调用；第三条也会失败，因为当前一次不带原因的排程不会把已排队的原因扩大。`readings.at(-1)` 的期望是 `{ measures: 1, syncs: 2 }`：`side` 声明了 `measure` 且在「侧栏」原因下被唤醒，`chat` 与 `anything` 都不实现 `measure`。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 在 `packages/engine/src/scheduler.ts` 的类型区加：
 
@@ -669,17 +671,17 @@ ui.meterRing = {
 
 每一处都写在各自的 `ui.<handle> = { … }` 对象里，不另设表。`wakesOn` 只写在与订阅原因相关的句柄上：一个功能只要有一条变化路径没有声明，就要么补齐原因，要么不给这个句柄 `wakesOn`。**不给 `wakesOn` 永远安全，给了就必须覆盖全部读数**；`skipOnContentOnly` 继续按原样保留，两者是「与」的关系。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/wake-reason.spec.ts`
 Expected: PASS，两个用例都通过。
 
-- [ ] **Step 5: 逐功能核对标记与盒没有变**
+- [x] **Step 5: 逐功能核对标记与盒没有变**
 
 Run: `node packages/testing/smoke.mjs --feature header-band,view-tabs,sidebar-status,sidebar-entries,account,date-groups,manual-unread,model,effort --jobs 2`
 Expected: 全部通过，包含每个功能自己的拆装用例。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/engine/src/scheduler.ts packages/client/src/core/scheduler.ts packages/client/src/features/header-band/header-band.ts packages/client/src/features/view-tabs/view-tabs.ts packages/client/src/features/sidebar-status/sidebar-status.ts packages/client/src/features/sidebar-entries/sidebar-entries.ts packages/client/src/features/account/account-footer.ts packages/client/src/features/date-groups/date-groups.ts packages/client/src/features/manual-unread/manual-unread.ts packages/client/src/features/model/model-picker.ts packages/client/src/features/effort/effort-picker.ts packages/client/src/features/chat-fold/chat-fold.ts packages/client/src/features/chat-wait/chat-wait.ts packages/client/src/features/composer/composer.ts packages/client/src/features/chat-follow/chat-follow.ts packages/client/src/features/context-stats/context-stats.ts packages/client/src/features/context-stats/meter-ring.ts packages/testing/specs/mechanism/scheduler-cost/wake-reason.spec.ts
@@ -701,7 +703,7 @@ git commit -m "perf(scheduler): 按功能声明的原因决定这一帧是否唤
 - Consumes: Task 2 的 `wakesOn`。
 - Produces: `ObserveMatches` 返回值新增 `version(): number`，每次清单变化加一；`bus.ts` 的 `MatchList<T>` 加这个方法。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 /**
@@ -732,12 +734,12 @@ test('a match list reports a version that moves only when its set changes', asyn
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/quiet-repeat.spec.ts`
 Expected: FAIL，`MatchList` 上还没有 `version` 方法。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 在 `packages/engine/src/bus.ts` 的 `MatchRegistry` 里加 `version: number`，`MatchList` 加 `version(): number`，并在 `registryFor` 的回调里 `changed` 分支加一：
 
@@ -873,17 +875,17 @@ export interface MatchList<T extends Element> {
 
 `invalidate()` 里把两个版次都复原为 `-1`，让下一次读与写都重新遍历；`settleRow()` 是批次回调里直接读写的路径，它不走这两个版次，保持原样。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/testing/specs/mechanism/scheduler-cost/quiet-repeat.spec.ts`
 Expected: PASS，版次只在清单真的变化时加一。
 
-- [ ] **Step 5: 跑三个功能自己的冒烟用例**
+- [x] **Step 5: 跑三个功能自己的冒烟用例**
 
 Run: `node packages/testing/smoke.mjs --case composer,chat-fold,context-stats --jobs 2`
 Expected: 全部通过；`scheduler idle once settled (0 passes in 1 s)` 仍为 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/engine/src/bus.ts packages/client/src/features/composer/composer.ts packages/client/src/features/composer/placeholder-copy.ts packages/client/src/features/context-stats/session-stats.ts packages/client/src/features/chat-fold/message-fold.ts packages/testing/specs/mechanism/scheduler-cost/quiet-repeat.spec.ts
@@ -1089,7 +1091,7 @@ git commit -m "perf(frame): 把输入卡、统计与提示的布局读取移进�
 - Consumes: `packages/client/src/theme/tokens.json` 里已有的 `--dsh-claude-period-*` 与 `--dsh-claude-ease-*`。
 - Produces: 不新增标记。所有 `dsh-claude-popover-card` 都已经在开合路径里写 `data-open`（`shared/popover.ts` 的 `setMenuPopoverOpen`、`account-drawer.ts`、`turn-nav.ts`、`settings-percent-control.ts`），所以滤镜选择器可以直接读既有状态。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 /**
@@ -1127,7 +1129,7 @@ export default spec({ page: 'host-palette' }, ({ test }) => {
 
 页面要在 `data-dsh-claude-palette="host"` 下才命中这条滤镜。`host-palette` 这一页就是为它准备的（`packages/testing/smoke/stand-in/host-palette.js` 装了宿主令牌，探针卡片也带 `data-open="true"`），用例的 `page` 取 `'host-palette'`，并在 `t.prefs({ palette: 'host' })` 之后读两档。`desktop` 页没有装宿主令牌，命中不了这条规则。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node packages/testing/behaviour.mjs --spec account-menu/blur-scope`
 Expected: FAIL——关闭状态的卡片也会读到 `blur(16px) saturate(1.4)`。
@@ -1200,17 +1202,17 @@ body[data-dsh-claude-style]:not([data-dsh-claude-motion="reduced"])[data-dsh-cla
 
 `model-cards.ts` 的 `trackPointer` 已经只在卡片打开期间挂载（`trackPointerWhileOpen()` 在关闭时 `unbindPointerTracking()`），**这一处不需要改**；原文那条 `if (!open) return` 会引用一个不存在的变量。本条任务不动 `model-cards.ts`。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node packages/testing/behaviour.mjs --spec account-menu/blur-scope`
 Expected: PASS，关闭卡片的 `backdrop-filter` 为 `none`，打开后不再是 `none`。
 
-- [ ] **Step 5: 跑动效与外观核对**
+- [x] **Step 5: 跑动效与外观核对**
 
 Run: `node packages/testing/smoke.mjs --case host-palette,motion --jobs 1` 与 `node packages/testing/e2e.mjs --scenario motion,washLine --jobs 1`
 Expected: `host-palette` 仍读到探针卡片的 `blur(16px)`；`motion` 与 `washLine` 通过。`washLine` 的 `washes` 读数若因色流改成两枚伪元素而变化，必须同步更新该场景的断言与 `@risk` 文字，并在提交说明里写明改动前后各读到什么。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/client/src/shared/popover.css packages/client/src/shared/motion.css packages/client/src/features/sidebar-status/sidebar-status.css packages/testing/wash-line.mjs packages/testing/specs/behaviour/account-menu/blur-scope.spec.mjs
@@ -1230,7 +1232,7 @@ git commit -m "perf(style): 常驻动画改走合成器属性，关闭的卡片�
 - Consumes: `load: 'deferred'` 与 `loadFeatureChunk()` 的现有机制（D76）。
 - Produces: 两个功能清单的新 `load` 值；其余字段不变。`turn-nav` 与 `message-actions` 已经在清单里声明 `load: 'deferred'`，本任务不改它们，也不重复提交。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 /**
@@ -1263,12 +1265,12 @@ export default spec({ page: 'desktop' }, ({ test }) => {
 
 `10` 这个数是「当前 8 个延后功能，加上本任务新增的 2 个」；执行时先用 `node -e "…"` 读出 `readManifests()` 里 `load === 'deferred'` 的条数，把断言写成实际条数，并把该数字与理由写进 `packages/testing/data/bounds.json`。**不要用 `performance.getEntriesByType('resource')` 里的文件名正则**：路由地址带内容哈希与查询串，`/assets/[0-9a-f]+\.js$` 匹配不到。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node packages/testing/behaviour.mjs --spec chunks/first-paint`
 Expected: FAIL——`header-band` 与 `view-tabs` 仍在主产物里，请求到的块数比期望少 2。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 两个清单各加 `load: 'deferred'`，其余字段不动：
 
@@ -1288,17 +1290,17 @@ Expected: FAIL——`header-band` 与 `view-tabs` 仍在主产物里，请求到
 
 `turn-nav`、`message-actions` 与 `search` 都已经声明 `load: 'deferred'`，不在这一步的改动里。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node packages/testing/behaviour.mjs --spec chunks/first-paint`
 Expected: PASS，块请求数达到清单里的延后功能数。
 
-- [ ] **Step 5: 跑构建与延后功能的冒烟**
+- [x] **Step 5: 跑构建与延后功能的冒烟**
 
 Run: `npm run build` 与 `node packages/testing/smoke.mjs --feature header-band,view-tabs --jobs 2`
 Expected: 构建通过（导入图没有模块被两处携带）；两个功能各自的安装、拆除与延后到达用例全部通过。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/client/src/features/header-band/header-band.manifest.ts packages/client/src/features/view-tabs/view-tabs.manifest.ts packages/testing/specs/behaviour/chunks/first-paint.spec.mjs
@@ -1323,7 +1325,7 @@ git commit -m "perf(load): 把首屏不需要的标题条与标签条移进延�
 - Consumes: `subscribePageHidden(listener)` 与 `pageHidden()`（`packages/client/src/core/page-visibility.ts`）。
 - Produces: `SkinSeam.pageHidden(): boolean`；`packages/engine/src/host.ts` 新增同名访问器。`home-ripple.ts` 已经接好可见性，不在本任务里。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```js
 /**
@@ -1364,12 +1366,12 @@ export default spec({ page: 'context-stats' }, ({ test }) => {
 
 `context-stats` 页上跑着等待线、用量面板与调度器的时钟，三者任一在隐藏后继续排帧都会让这条断言失败。**这条用例只能证明「没有任何 skin 时钟在排帧」**，不能证明每一处都停了；`chat-wait`、`home-store` 与调度器的停止各自由它自己的读数覆盖（Step 3 末尾的检查）。
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node packages/testing/behaviour.mjs --spec page-visibility/script-clocks`
 Expected: FAIL——隐藏后仍能读到新的请求数。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `chat-wait.ts` 的轮询起停包进可见性。**`timer` 的声明位置要先确认**：它现在是 `syncLines()` 里读写的模块级变量，抽成 `startTick()` 时保持同一个变量，不要新起一个局部定时器。
 
@@ -1466,17 +1468,17 @@ import { pageHidden } from './host'
 
 调度器的 60 秒 `clockTimer` 也要在隐藏时停：它属于引擎，按同一访问器判断，或在 `scheduler.ts` 里订阅一个由皮肤交来的可见性源；**不要**在引擎里直接 `import` 浏览器的 `document.visibilityState` 之外的皮肤模块。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node packages/testing/behaviour.mjs --spec page-visibility/script-clocks`
 Expected: PASS，隐藏期间请求数增量为 0，回来后重新开始。
 
-- [ ] **Step 5: 跑既有可见性规范与冒烟**
+- [x] **Step 5: 跑既有可见性规范与冒烟**
 
 Run: `node packages/testing/behaviour.mjs --spec page-visibility/hold-still` 与 `node packages/testing/smoke.mjs --case chat-wait,context-stats,caret --jobs 2`
 Expected: 全部通过；`scheduler idle once settled` 仍为 0。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/engine/src/skin.ts packages/engine/src/host.ts packages/engine/src/scroll-owner.ts packages/client/src/entry.ts packages/client/src/features/chat-wait/chat-wait.ts packages/client/src/features/home/home-store.ts packages/client/src/features/chat-reveal/chat-reveal.settings.ts packages/client/src/features/caret/caret.settings.ts packages/testing/specs/behaviour/page-visibility/script-clocks.spec.mjs
@@ -1497,7 +1499,7 @@ git commit -m "perf(visibility): 页面离开屏幕时连脚本时钟一起停�
 - Consumes: Task 0 的 `reportPass` 读数与 Task 1–7 的实现。
 - Produces: 新增两条边界 `longSessionPassCalls`、`longSessionLayoutReads`，两条都带理由。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 在 `packages/testing/long-session.mjs` 的 `assert()` 里加两条检查，数字全部从 `bound()` 读。`bound()` 在 `bounds.json` 没有这个名字时直接抛错，这正是这一步期望的失败；两条检查本身不新增别的辅助函数。
 
@@ -1514,12 +1516,12 @@ git commit -m "perf(visibility): 页面离开屏幕时连脚本时钟一起停�
       )
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node packages/testing/e2e.mjs --scenario longSession --jobs 1`
 Expected: FAIL，`bounds.json` 里还没有这两个名字，`bound()` 直接抛出。
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `packages/testing/data/bounds.json` 追加两条。**两条的值要先由 Task 0 的基线读数决定**，不能先写死再倒推：
 
@@ -1578,22 +1580,22 @@ async function read(page) {
   })
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `DSH_CLAUDE_STYLE_PASS_READINGS=1 npm run build` 与 `node packages/testing/e2e.mjs --scenario longSession --jobs 1`
 Expected: PASS，两条新检查打印读数且在上限内。
 
-- [ ] **Step 5: 把全部读数和改动前对照一遍**
+- [x] **Step 5: 把全部读数和改动前对照一遍**
 
 Run: `DSH_CLAUDE_STYLE_PASS_READINGS=1 npm run build` 与 `DSH_LONG_SESSION_TURNS=8 node packages/testing/e2e.mjs --scenario longSession --jobs 1`
 Expected: `rows`、`queries`、`p95`、`long tasks` 不劣于 Task 0 记下的基线；`passMeasures` 与 `passSyncs` 的 p95 不随会话长度放大。跑完后再执行一次 `npm run build`，把不带读数入口的正式产物写回 `lib/`。
 
-- [ ] **Step 6: 重写受影响的记录并核对**
+- [x] **Step 6: 重写受影响的记录并核对**
 
 Run: `node packages/testing/check-numbers.mjs` 与 `node scripts/ci-scope.mjs --ledgers --base master`
 Expected: `check-numbers.json` 只多出这两条检查的数字；`document-lookups.json` 的清册没有增长。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/testing/long-session.mjs packages/testing/data/bounds.json packages/testing/data/check-numbers.json
@@ -1612,6 +1614,28 @@ git commit -m "test(perf): 把一帧的功能调用数与布局读取数纳入�
 
 **4. 依赖方向**：Task 7 里 `packages/engine/src/scroll-owner.ts` 不得导入浏览器半边的 `packages/client/src/core/page-visibility.ts`（D73 与 `npm run lint` 都会拒绝）；可见性答案由 `packages/engine/src/skin.ts` 的 `SkinSeam` 交出，`packages/engine/src/host.ts` 只做转调，`scroll-owner.ts` 只调用访问器。
 
-**5. 与代码现状的一致性**：Task 1 的受众函数按 `mutationSubscriptions` 回填，保住订阅顺序；Task 3 的输入卡只跳过全量遍历，折叠的读与写各用独立版次；Task 5 不动 `model-cards.ts`（指针跟踪已经只在打开时挂），标题扫光改为内部高亮层而非位移文字；Task 6 只改 `header-band` 与 `view-tabs`（`turn-nav` 与 `message-actions` 已经延后）；Task 7 不重复处理 `home-ripple.ts`（它已接好可见性）；Task 8 的页面读数在 `page.evaluate()` 的回调内读取。
+**5. 与代码现状的一致性**：Task 1 的受众函数按 `mutationSubscriptions` 回填，保住订阅顺序；Task 3 的输入卡只跳过全量遍历，折叠的读与写各用独立版次；Task 6 只改 `header-band` 与 `view-tabs`（`turn-nav` 与 `message-actions` 已经延后）；Task 7 不重复处理 `home-ripple.ts`（它已接好可见性）；Task 8 的页面读数在 `page.evaluate()` 的回调内读取。
 
 **6. 验收边界**：Task 5 的 `washLine` 读数与 Task 6 的块数断言都可能随实现变化，两处都写明了「必须随实现同步更新，并说明改动前后各读到什么」，不允许放宽断言通过。
+
+---
+
+## 实施结果
+
+**Task 0**：`packages/client/src/core/frame-metrics.ts` 记录每一次调度通行的 `measure()` 与 `sync()` 调用次数，`DSH_CLAUDE_STYLE_PASS_READINGS=1` 时构建把读数挂到 `window.__dshPassReadings`。正式产物里这个开关编译成常量 `false`，读数入口是死代码。
+
+**Task 1**：`audienceFor()` 按订阅目标给一批记录收窄受众，顺序仍从 `mutationSubscriptions` 回填。订阅目标在批次里离开文档时，它自己子树里的变化仍会送达。
+
+**Task 2**：`WakeReason`、`FeatureHandle.wakesOn` 与 `skips()` 落在引擎调度器里；正文订阅按记录所在的区域（标题、侧栏、输入卡、会话列）命名原因，无法归位的记录退回整页唤醒。分钟时钟与不带原因的排程始终整页唤醒。功能句柄各自声明读数依赖的变化。
+
+**Task 3**：`MatchList.version()` 只在清单集合变化时加一；输入卡按版次跳过变体遍历，占位符、统计与折叠各自按版次跳过。被强制扫过的占位符会在下一遍再读一次，避免合成的提示留在卡片里。
+
+**Task 4**：未实现。审查逐条读过计划点名的四处：`findComposerSeat()`、`conversationViewPreference()`、`conversationColumn()` 与 `inline.root()` 是 DOM 查询与属性读取，不触发排版；为它们引入 `measure()` 只会改变读与自身的顺序，不减少一次排版。真正的排版读取在 `stats-binding.ts` 的 `alignContextPanel()` 与 `composer/responsive.ts` 各自的 `requestFrame` 读阶段里，计划本来就把它们留给后续任务。因此本轮不加 `measureComposer()`、`placeholderCopy.measure()` 与 `read-phase.spec.ts`；`session-stats.ts` 的 meter 与面板读取已经在 Task 3 搬进 `measure()`。
+
+**Task 5**：`popover.css` 的 `backdrop-filter` 收到 `[data-open="true"]`，关闭的卡片不再保留模糊层。`sidebar-status.css` 的标题扫光与 `motion.css` 的色流保持原样：两种候选改法都改变了读者看到的画面（矩形光带而不是贴合文字的光带；八层色彩无法用两个伪元素还原同一段流动），而这一项的前提正是可见结果不变。
+
+**Task 6**：`header-band` 与 `view-tabs` 声明 `load: 'deferred'`；首屏请求的块数由 `firstPaintDeferredChunks` 判读。
+
+**Task 7**：`SkinSeam.pageHidden()` 经 `engine/host.ts` 交给引擎；等待线轮询、用量轮询、跟随轮次、两处设置预览与调度器的分钟时钟在页面离开屏幕时停下，回来时重新开始。
+
+**Task 8**：长会话通道新增 `longSessionPassCalls` 与 `longSessionLayoutReads` 两条上限，读数缺失时直接判失败。实测：45 行、`passMeasures 13`、`passSyncs 25`、盒读取约 640 次。
