@@ -146,13 +146,6 @@
       "prop": "box-shadow",
       "verdict": "unmatched"
     },
-    "body[data-dsh-claude-style][data-dsh-claude-palette=host] .dsh-claude-popover-card{-webkit-backdrop-filter:blur(16px) saturate(1.4)!;backdrop-filter:blur(16px) saturate(1.4)}|-webkit-backdrop-filter": {
-      "selector": "body[data-dsh-claude-style][data-dsh-claude-palette=host] .dsh-claude-popover-card",
-      "prop": "-webkit-backdrop-filter",
-      "verdict": "needed",
-      "state": "host palette",
-      "opponents": []
-    },
     "body[data-dsh-claude-style] .dsh-claude-popover-status{color:var(--dsw-alias-label-tertiary, #91888a)!;font-size:12px!;line-height:20px!;padding:4px 8px!}|color": {
       "selector": "body[data-dsh-claude-style] .dsh-claude-popover-status",
       "prop": "color",
@@ -1570,6 +1563,13 @@
       "selector": "html[data-dsh-theme-transitioning] body[data-dsh-claude-style][data-dsh-theme-transitioning] *",
       "prop": "transition",
       "verdict": "transient state"
+    },
+    "body[data-dsh-claude-style][data-dsh-claude-palette=host] .dsh-claude-popover-card[data-open=true]{-webkit-backdrop-filter:blur(16px) saturate(1.4)!;backdrop-filter:blur(16px) saturate(1.4)}|-webkit-backdrop-filter": {
+      "selector": "body[data-dsh-claude-style][data-dsh-claude-palette=host] .dsh-claude-popover-card[data-open=true]",
+      "prop": "-webkit-backdrop-filter",
+      "verdict": "needed",
+      "state": "host palette",
+      "opponents": []
     }
   }
 }

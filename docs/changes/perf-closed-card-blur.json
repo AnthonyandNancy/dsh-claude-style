@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-06",
+  "group": "improvements",
+  "order": 25,
+  "external": false,
+  "zh": "改善弹层未打开时的合成开销",
+  "en": "Drop the backdrop blur from a closed popover card"
+}
