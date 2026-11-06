@@ -276,8 +276,13 @@ jobs:
         with:
           path: .debug/build-cache
           key: build-cache-${{ runner.os }}-${{ needs.changed.outputs.tree }}
+      # The pass counts and box reads the lane's long-session checks judge are
+      # compiled in behind this flag (scripts/build.mjs), so this build carries
+      # them; the published bundle never does.
       - run: npm run build
         timeout-minutes: 15
+        env:
+          DSH_CLAUDE_STYLE_PASS_READINGS: '1'
       # The lane boots the host's own CLI, which needs pnpm to install a
       # profile's plugins.
       - run: npm install --global pnpm@11 @deepseek-ai/dsh@$(node packages/testing/host-version.mjs)
