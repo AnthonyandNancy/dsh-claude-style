@@ -49,17 +49,24 @@ const GROWTH_RATIO = bound('longSessionGrowthRatio')
 const GROWTH_SLACK = bound('longSessionGrowthSlack')
 const QUERY_SLACK = bound('longSessionQuerySlack')
 const GROWTH_FLOOR_MS = bound('longSessionGrowthFloorMs')
-/** The most feature hooks one pass may call, printed beside the baseline until a check compares against it. */
+/** The most feature hooks one pass may call, and the layout reads it may make. */
 const PASS_CALLS = bound('longSessionPassCalls')
+const LAYOUT_READS = bound('longSessionLayoutReads')
 
-/** The in-page readings of one measured round, counters reset first. */
-async function measureTurn(page, prompt) {
-  await page.evaluate(() => {
+/** Empty the page's counters, so the round that follows reads its own turn alone. */
+function resetCounters(page) {
+  return page.evaluate(() => {
     window.__longSession.frames.length = 0
     window.__longSession.longtasks.length = 0
     window.__longSession.queries = 0
+    window.__longSession.layoutReads = 0
     window.__dshPassReadings?.clear()
   })
+}
+
+/** The in-page readings of one measured round, counters reset first. */
+async function measureTurn(page, prompt) {
+  await resetCounters(page)
   await sendPrompt(page, prompt)
   await waitForTurn(page)
   return read(page)
@@ -75,6 +82,7 @@ async function read(page) {
       queries: window.__longSession.queries,
       nodes: document.querySelectorAll('body *').length,
       rows: document.querySelectorAll('[data-chat-flow-kind]').length,
+      layoutReads: window.__longSession.layoutReads,
       passes,
     }
   })
@@ -104,13 +112,21 @@ function longSessionScenario({ check }) {
      * and a lookup per element is what the two rounds below tell apart.
      */
     initScript: () => {
-      window.__longSession = { frames: [], longtasks: [], queries: 0, passes: [] }
+      window.__longSession = { frames: [], longtasks: [], queries: 0, passes: [], layoutReads: 0 }
       const counted = (original) => function (...args) {
         window.__longSession.queries += 1
         return original.apply(this, args)
       }
       Document.prototype.querySelector = counted(Document.prototype.querySelector)
       Document.prototype.querySelectorAll = counted(Document.prototype.querySelectorAll)
+      // The box reads a pass makes: a read after a write forces the browser to
+      // lay the page out again, so a long transcript pays the pass twice.
+      const boxed = (original) => function (...args) {
+        window.__longSession.layoutReads += 1
+        return original.apply(this, args)
+      }
+      Element.prototype.getBoundingClientRect = boxed(Element.prototype.getBoundingClientRect)
+      Element.prototype.getClientRects = boxed(Element.prototype.getClientRects)
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) window.__longSession.longtasks.push(Math.round(entry.duration))
       }).observe({ entryTypes: ['longtask'] })
@@ -140,12 +156,7 @@ function longSessionScenario({ check }) {
         await sendPrompt(page, `fill the transcript ${index + 1}`)
         await waitForTurn(page)
       }
-      await page.evaluate(() => {
-        window.__longSession.frames.length = 0
-        window.__longSession.longtasks.length = 0
-        window.__longSession.queries = 0
-        window.__dshPassReadings?.clear()
-      })
+      await resetCounters(page)
       const filled = await page.evaluate(() => ({
         nodes: document.querySelectorAll('body *').length,
         rows: document.querySelectorAll('[data-chat-flow-kind]').length,
@@ -183,7 +194,7 @@ function longSessionScenario({ check }) {
       const passSyncs = Math.max(0, ...measured.passes.map((reading) => reading.syncs))
       const readings = `rows ${short.rows} → ${measured.rows} (×${ratio.toFixed(2)}), queries ${short.queries} → ${measured.queries}, ` +
         `long tasks ${shortCost.longTotal}ms → ${longCost.longTotal}ms, p95 ${shortCost.p95}ms → ${longCost.p95}ms, ` +
-        `pass measures ${passMeasures}, syncs ${passSyncs}, bound ${PASS_CALLS}`
+        `pass measures ${passMeasures}, syncs ${passSyncs}, bound ${PASS_CALLS}, layout reads ${measured.layoutReads}, bound ${LAYOUT_READS}`
       rounds.push(
         check('两轮量的是同一个长度比：会话长了几倍，这一轮的量也长了几倍',
           ratio >= GROWTH_RATIO && measured.rows > short.rows,
@@ -198,6 +209,8 @@ function longSessionScenario({ check }) {
         // do compare — the whole-document lookups and the p95 frame.
         check('这一轮的 p95 帧时不随会话长度放大',
           longCost.p95 <= shortCost.p95 * allowed + GROWTH_FLOOR_MS, readings),
+        check('一帧叫醒的功能数不随会话变长而增加', passMeasures <= PASS_CALLS, readings),
+        check('一帧的布局读取次数不随会话变长而增加', measured.layoutReads <= LAYOUT_READS, readings),
       )
       return rounds
     },
