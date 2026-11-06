@@ -481,6 +481,7 @@ async function main() {
     // The colour cards, as the settings page shows them: the same data the token
     // sheet resolves, so the swatches and the page cannot disagree.
     PALETTE_CARDS: tokenDoc.palette.cards,
+    PASS_READINGS: process.env.DSH_CLAUDE_STYLE_PASS_READINGS === '1',
   })
 
   /**

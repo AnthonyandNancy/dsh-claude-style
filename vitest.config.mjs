@@ -28,7 +28,7 @@ const SRC = path.resolve(import.meta.dirname, 'packages', 'client', 'src')
 const GENERATED_FILE = path.resolve(import.meta.dirname, '.debug', 'vitest', 'generated.mjs')
 const tokens = JSON.parse(fs.readFileSync(path.join(SRC, 'theme', 'tokens.json'), 'utf8'))
 fs.mkdirSync(path.dirname(GENERATED_FILE), { recursive: true })
-fs.writeFileSync(GENERATED_FILE, `${generatedSource({ MOTION: motionValues(tokens), PALETTE_CARDS: tokens.palette.cards })}\n`)
+fs.writeFileSync(GENERATED_FILE, `${generatedSource({ MOTION: motionValues(tokens), PALETTE_CARDS: tokens.palette.cards, PASS_READINGS: false })}\n`)
 
 export default defineConfig({
   // The packages resolve the way the type check and the bundler resolve them,

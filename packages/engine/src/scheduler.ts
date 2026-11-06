@@ -76,7 +76,7 @@ export type SchedulerUi<Name extends string> = SchedulerCalls & { [K in Name]?: 
 /** Where a change comes from: it hears the listener, and answers the function that stops hearing. */
 export type ChangeSource = (listener: () => void) => () => void
 
-/** What the skin hands the scheduler: the sources it listens to and the two answers only the skin gives. */
+/** What the skin hands the scheduler: the sources it listens to, and the answers and readings only the skin gives. */
 export interface SchedulerSources {
   /** Changes that rebuild a feature's copy and ask for a pass: the preferences, the model copy. */
   copyChange: ChangeSource[]
@@ -89,6 +89,8 @@ export interface SchedulerSources {
   start(): void
   /** The system's reduced-motion flag flipped: the skin's own attribute follows it. */
   systemMotionChanged(): void
+  /** Told after every pass, for the page's own cost readings. */
+  reportPass?(reading: { measures: number, syncs: number }): void
 }
 
 /** Say once, loudly, that a feature was switched off: the console line is its only trace. */
@@ -344,15 +346,22 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     // (D40). The flag says whether this frame's read phase ran, so a task
     // cancelled between the phases writes from the previous measurements.
     let measured = false
+    let measures = 0
+    let syncs = 0
+    const runMeasures = (content: boolean) => {
+      for (const name of features) {
+        if (content && handleOf(name)?.skipOnContentOnly === true) continue
+        const handle = handleOf(name)
+        if (handle === undefined || typeof handle.measure !== 'function') continue
+        measures += 1
+        runMeasure(name)
+      }
+    }
     cancelPass = requestFrame({
       read() {
         measured = true
         if (stopped) return
-        const content = passContentOnly
-        for (const name of features) {
-          if (content && handleOf(name)?.skipOnContentOnly === true) continue
-          runMeasure(name)
-        }
+        runMeasures(passContentOnly)
       },
       write() {
         scheduled = false
@@ -364,15 +373,16 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
           // The write phase is running without this frame's read phase (the
           // task was queued after the frame's reads): measure now, before any
           // feature writes.
-          for (const name of features) {
-            if (content && handleOf(name)?.skipOnContentOnly === true) continue
-            runMeasure(name)
-          }
+          runMeasures(content)
         }
         for (const name of features) {
           if (content && handleOf(name)?.skipOnContentOnly === true) continue
+          const handle = handleOf(name)
+          if (handle === undefined || typeof handle.sync !== 'function') continue
+          syncs += 1
           runSync(name)
         }
+        if (typeof sources.reportPass === 'function') sources.reportPass({ measures, syncs })
         const currentCard = findComposerCard()
         if (currentCard !== observedCard) {
           if (stopCardSize !== null) stopCardSize()

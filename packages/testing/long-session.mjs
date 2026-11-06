@@ -49,6 +49,8 @@ const GROWTH_RATIO = bound('longSessionGrowthRatio')
 const GROWTH_SLACK = bound('longSessionGrowthSlack')
 const QUERY_SLACK = bound('longSessionQuerySlack')
 const GROWTH_FLOOR_MS = bound('longSessionGrowthFloorMs')
+/** The most feature hooks one pass may call, printed beside the baseline until a check compares against it. */
+const PASS_CALLS = bound('longSessionPassCalls')
 
 /** The in-page readings of one measured round, counters reset first. */
 async function measureTurn(page, prompt) {
@@ -56,21 +58,26 @@ async function measureTurn(page, prompt) {
     window.__longSession.frames.length = 0
     window.__longSession.longtasks.length = 0
     window.__longSession.queries = 0
+    window.__dshPassReadings?.clear()
   })
   await sendPrompt(page, prompt)
   await waitForTurn(page)
   return read(page)
 }
 
-/** What the page counted: the frames, the long tasks and every whole-document lookup. */
+/** What the page counted: the frames, the long tasks, every whole-document lookup and every pass. */
 async function read(page) {
-  return page.evaluate(() => ({
-    frames: window.__longSession.frames.slice(),
-    longtasks: window.__longSession.longtasks.slice(),
-    queries: window.__longSession.queries,
-    nodes: document.querySelectorAll('body *').length,
-    rows: document.querySelectorAll('[data-chat-flow-kind]').length,
-  }))
+  return page.evaluate(() => {
+    const passes = window.__dshPassReadings ? window.__dshPassReadings.read() : []
+    return {
+      frames: window.__longSession.frames.slice(),
+      longtasks: window.__longSession.longtasks.slice(),
+      queries: window.__longSession.queries,
+      nodes: document.querySelectorAll('body *').length,
+      rows: document.querySelectorAll('[data-chat-flow-kind]').length,
+      passes,
+    }
+  })
 }
 
 /** The p95 frame of a round, and its long tasks' total, as the two cost readings. */
@@ -97,7 +104,7 @@ function longSessionScenario({ check }) {
      * and a lookup per element is what the two rounds below tell apart.
      */
     initScript: () => {
-      window.__longSession = { frames: [], longtasks: [], queries: 0 }
+      window.__longSession = { frames: [], longtasks: [], queries: 0, passes: [] }
       const counted = (original) => function (...args) {
         window.__longSession.queries += 1
         return original.apply(this, args)
@@ -137,6 +144,7 @@ function longSessionScenario({ check }) {
         window.__longSession.frames.length = 0
         window.__longSession.longtasks.length = 0
         window.__longSession.queries = 0
+        window.__dshPassReadings?.clear()
       })
       const filled = await page.evaluate(() => ({
         nodes: document.querySelectorAll('body *').length,
@@ -171,8 +179,11 @@ function longSessionScenario({ check }) {
       const longCost = cost(measured)
       const ratio = short.rows === 0 ? 0 : measured.rows / short.rows
       const allowed = ratio * GROWTH_SLACK
+      const passMeasures = Math.max(0, ...measured.passes.map((reading) => reading.measures))
+      const passSyncs = Math.max(0, ...measured.passes.map((reading) => reading.syncs))
       const readings = `rows ${short.rows} → ${measured.rows} (×${ratio.toFixed(2)}), queries ${short.queries} → ${measured.queries}, ` +
-        `long tasks ${shortCost.longTotal}ms → ${longCost.longTotal}ms, p95 ${shortCost.p95}ms → ${longCost.p95}ms`
+        `long tasks ${shortCost.longTotal}ms → ${longCost.longTotal}ms, p95 ${shortCost.p95}ms → ${longCost.p95}ms, ` +
+        `pass measures ${passMeasures}, syncs ${passSyncs}, bound ${PASS_CALLS}`
       rounds.push(
         check('两轮量的是同一个长度比：会话长了几倍，这一轮的量也长了几倍',
           ratio >= GROWTH_RATIO && measured.rows > short.rows,

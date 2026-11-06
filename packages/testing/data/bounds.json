@@ -2,6 +2,11 @@
   "note": "The bounds a check compares against, each with the reason it holds that value (D77: a check reads its bound here instead of carrying a number of its own, so loosening one is a visible change with a reason beside it). The bounds of the other lanes move in with the migration; this file holds the ones a check reads so far.",
   "bounds": [
     {
+      "name": "longSessionPassCalls",
+      "value": 48,
+      "reason": "The most feature hooks one pass may call on either measured round. The shipped page installs about forty handles and most of them implement one hook; a pass that starts calling every handle on every streamed batch lands above this and a pass that follows the declared reasons stays under it."
+    },
+    {
       "name": "longSessionGrowthRatio",
       "value": 2.5,
       "reason": "How much longer the second measured turn's transcript has to be for the two rounds to be worth comparing at all. The two lengths are set by the fill turns, and how many rows a scripted answer leaves behind moves the ratio between about 2.8 and 3.8 runs, so the floor sits below the lowest reading that still separates the two lengths."

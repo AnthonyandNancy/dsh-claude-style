@@ -2,6 +2,7 @@ import { installScheduler as installEngineScheduler } from '@dsh-claude-style/en
 import type { FeatureHandle, SchedulerCalls } from '@dsh-claude-style/engine/scheduler'
 import { onHdslLoaded, onUsernameLoaded } from '../shared/identity'
 import { onModelCopyLoaded } from '../features/model/model-copy'
+import { recordPassReading } from './frame-metrics'
 import { loadPrefs, refreshMotionAttribute, subscribePrefs } from './prefs'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FooterHandle } from '../features/account/account-footer'
@@ -86,5 +87,6 @@ export function installScheduler(ctx: HostContext, ui: Ui, features: HandleName[
     refresh: [onUsernameLoaded, onHdslLoaded],
     start: loadPrefs,
     systemMotionChanged: refreshMotionAttribute,
+    reportPass: recordPassReading,
   })
 }

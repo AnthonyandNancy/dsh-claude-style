@@ -21,8 +21,9 @@ import type { PageOwner } from './shared/visual-owner'
 import { loadFeatureChunk } from './core/chunks'
 import { handleName, setFeatureRegistry } from './core/feature'
 import type { Feature, FeatureInstall } from './core/feature'
+import { clearPassReadings, readPassReadings } from './core/frame-metrics'
 import { FEATURES } from 'virtual:dsh-claude-style/features'
-import { BUILD_ID } from 'virtual:dsh-claude-style/generated'
+import { BUILD_ID, PASS_READINGS } from 'virtual:dsh-claude-style/generated'
 
 // The engine runs on the skin's own vocabulary: the attributes this package
 // writes, and the two answers only the skin can give (D73). Handed over before
@@ -38,6 +39,9 @@ adoptSkin({
 // returns, so an `apply()` body would be too late. The head watch
 // (shared/peer-plugin.ts) covers the sheets that arrive later.
 parkForeignSheets()
+
+// The long-session lane reads the pass counts; a published page carries none.
+if (PASS_READINGS) Object.assign(window, { __dshPassReadings: { read: readPassReadings, clear: clearPassReadings } })
 
 /**
  * Whether a feature comes and goes during the generation: its preference is a

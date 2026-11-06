@@ -25,6 +25,8 @@ declare module 'virtual:dsh-claude-style/generated' {
   export const MOTION: Record<string, string>
   /** The colour cards the token sheet resolves (packages/client/src/theme/tokens.json, D30); the settings page's swatches read them. */
   export const PALETTE_CARDS: { id: string, accent: string, canvas: { light: string, dark: string }, link?: { light: string, dark: string }, code: { light: string, dark: string }, edges: 'highlight' | 'surface', logoInk: 'ink' | 'accent' }[]
+  /** Whether this build exposes the pass cost readings to the long-session lane; a published bundle carries none. */
+  export const PASS_READINGS: boolean
 }
 
 /**
