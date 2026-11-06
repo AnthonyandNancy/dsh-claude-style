@@ -73,6 +73,12 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
   /** Whether a composition in flight held a pass back, so the settle after it has work to do. */
   let held = false
   /**
+   * Whether a sweep ran on a forced reason and has still to be re-read: the
+   * stand-in it drew carries a pass no registry version carries, so the next
+   * ordinary pass must look at it rather than return on the versions.
+   */
+  let forced = false
+  /**
    * The host's own hint text this generation replaced, with the skin's text it
    * was replaced by. The teardown and a restyle that stands down put the host's
    * words back; a node whose text no longer matches what was written is left
@@ -195,7 +201,12 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
     drawnLocale = activeLocale()
     const found = cards.all()
     const version = placeholders.version()
-    if (!force && !draw && version === readPlaceholders && cards.version() === readStandInCards) return
+    // A forced sweep wrote a stand-in on a change no registry version carries;
+    // the pass after it has to read the stand-ins again to take back the ones
+    // the card has moved on from.
+    const reread = forced
+    forced = force
+    if (!reread && !draw && version === readPlaceholders && cards.version() === readStandInCards) return
     readPlaceholders = version
     readStandInCards = cards.version()
     const standIns = placeholders.all()
@@ -264,7 +275,9 @@ export function createPlaceholderCopy(cards: MatchList<HTMLElement>, placeholder
      */
     settle(hero: boolean, active: boolean) {
       if (!held || heldByComposition()) return
-      write(hero, active)
+      // The composition's own writes changed the field without moving either
+      // registry, so the sweep is reached whatever the versions say.
+      write(hero, active, true)
     },
     /** The placeholders the skin added stand in for the host's own, so they leave with it. */
     dispose() {

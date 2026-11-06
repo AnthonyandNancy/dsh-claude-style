@@ -8,18 +8,28 @@ export interface PassReading {
   syncs: number
 }
 
+/** The most readings kept: a long lane reads once, and a forgotten page keeps no more than this. */
+const CAP = 60000
+/** A ring, so the cap costs one write rather than a copy of every reading behind the oldest. */
 let readings: PassReading[] = []
+let next = 0
 
 export function recordPassReading(reading: PassReading) {
-  readings.push(reading)
-  // A long lane reads once; a cap keeps a forgotten page from filling memory.
-  if (readings.length > 60000) readings.shift()
+  if (readings.length < CAP) {
+    readings.push(reading)
+    return
+  }
+  readings[next] = reading
+  next = (next + 1) % CAP
 }
 
+/** The readings in the order they were recorded, oldest first. */
 export function readPassReadings(): PassReading[] {
-  return readings.slice()
+  if (readings.length < CAP) return readings.slice()
+  return [...readings.slice(next), ...readings.slice(0, next)]
 }
 
 export function clearPassReadings() {
   readings = []
+  next = 0
 }

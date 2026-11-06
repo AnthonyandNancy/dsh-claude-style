@@ -9,17 +9,26 @@
 import { expect, test } from 'vitest'
 import { observeMatches } from '@dsh-claude-style/engine/bus'
 
-test('a match list reports a version that moves only when its set changes', async () => {
+const settle = () => new Promise(resolve => setTimeout(resolve, 0))
+
+test('a match list reports a version that moves when its set changes, and not before', async () => {
   const root = document.createElement('div')
   document.body.append(root)
   const list = observeMatches<HTMLElement>('[data-test-version]')
   const before = list.version()
   expect(list.version()).toBe(before)
+  // A node the selector does not match is no change of the set.
+  const other = document.createElement('b')
+  root.append(other)
+  await settle()
+  expect(list.version()).toBe(before)
   const one = document.createElement('i')
   one.setAttribute('data-test-version', '')
   root.append(one)
-  await new Promise(resolve => setTimeout(resolve, 0))
+  await settle()
   expect(list.version()).toBe(before + 1)
+  // Reading the same set again moves nothing.
+  expect(list.all()).toEqual([one])
   expect(list.version()).toBe(before + 1)
   list.release()
   root.remove()

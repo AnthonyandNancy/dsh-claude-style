@@ -348,6 +348,19 @@ test('a registry listener hears every change of the set and nothing after its re
   expect(heard).toEqual([1, 2])
 })
 
+test('a subscription on a node detached in the same batch still hears its own change', async () => {
+  const root = host()
+  root.append(document.createElement('span'))
+  const seen: string[] = []
+  cleanups.push(subscribeMutations(root, { childList: true, subtree: true }, records => seen.push(...records.map(record => record.type))))
+  // The subscription's own target leaves the document in this batch, so the
+  // record has to reach it through the relationship the batch was made in.
+  root.remove()
+  root.append(document.createElement('b'))
+  await settle()
+  expect(seen).toEqual(['childList'])
+})
+
 test('a record reaches the subscriptions whose target holds it, and no others', async () => {
   const left = host()
   const right = host()

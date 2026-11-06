@@ -25,7 +25,11 @@ export default spec({ page: 'host-palette' }, ({ test }) => {
       node.setAttribute(attribute, 'true')
     }, { selector: card, attribute: openAttribute })
     const open = await t.read.computed(card, 'backdrop-filter')
+    // The two readings differ by the card's own open state alone: a closed card
+    // keeps its box and paints nothing, an open one keeps the blur it always had.
+    const visible = await t.read.computed(card, 'visibility')
     t.expectThat.equal(closed, 'none', 'a card nobody opened paints no blur')
-    t.expectThat.equal(open !== 'none', true, 'an open card keeps its blur')
+    t.expectThat.equal(/^blur\(16px\)/.test(open), true, `an open card keeps its blur (${open})`)
+    t.expectThat.equal(visible, 'visible', 'the open card is the one on screen')
   })
 })

@@ -84,6 +84,7 @@ async function read(page) {
       rows: document.querySelectorAll('[data-chat-flow-kind]').length,
       layoutReads: window.__longSession.layoutReads,
       passes,
+      passReadings: window.__dshPassReadings !== undefined,
     }
   })
 }
@@ -192,6 +193,10 @@ function longSessionScenario({ check }) {
       const allowed = ratio * GROWTH_SLACK
       const passMeasures = Math.max(0, ...measured.passes.map((reading) => reading.measures))
       const passSyncs = Math.max(0, ...measured.passes.map((reading) => reading.syncs))
+      if (!measured.passReadings) {
+        rounds.push(check('这一轮带着每帧的调用读数', false, 'the page exposed no pass readings; build with DSH_CLAUDE_STYLE_PASS_READINGS=1'))
+        return rounds
+      }
       const readings = `rows ${short.rows} → ${measured.rows} (×${ratio.toFixed(2)}), queries ${short.queries} → ${measured.queries}, ` +
         `long tasks ${shortCost.longTotal}ms → ${longCost.longTotal}ms, p95 ${shortCost.p95}ms → ${longCost.p95}ms, ` +
         `pass measures ${passMeasures}, syncs ${passSyncs}, bound ${PASS_CALLS}, layout reads ${measured.layoutReads}, bound ${LAYOUT_READS}`
