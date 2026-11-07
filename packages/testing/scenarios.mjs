@@ -28,6 +28,7 @@ import { reasoningStreamScenario } from './reasoning-stream.mjs'
 import { waitLineScenario } from './wait-line.mjs'
 import { washLineScenario } from './wash-line.mjs'
 import { longSessionScenario } from './long-session.mjs'
+import { scrollPaceScenario } from './scroll-pace.mjs'
 import { statsScenarios } from './stats-position.mjs'
 import { sidebarRailScenario } from './sidebar-rail.mjs'
 import { sidebarPeekScenario } from './sidebar-peek.mjs'
@@ -695,6 +696,8 @@ const SCENARIOS = {
   washLine: washLineScenario({ check }),
   /** What a frame costs in a transcript that is already long (long-session.mjs, D40). */
   longSession: longSessionScenario({ check }),
+  /** What idle, a conversation scroll and a window scroll cost over a long transcript (scroll-pace.mjs). */
+  scrollPace: scrollPaceScenario(),
   /** Every `!important` the skin writes is needed on the real page (packages/testing/importance.mjs, D9). */
   importance: importanceScenario({ check, observe, sendPrompt, waitForTurn, host: HOST }),
   /** A page under a non-loopback name reads and writes the host's settings beside the loopback one (packages/testing/remote-settings.mjs, D75). */

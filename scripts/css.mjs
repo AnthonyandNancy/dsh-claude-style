@@ -39,6 +39,22 @@ import { loadModule } from './shared/ts-module.mjs'
 import { ruleKey } from './shared/rule-key.mjs'
 import { TOKEN_SHEET, tokenSheet } from './theme-tokens.mjs'
 
+/**
+ * Which page or surface a sheet belongs to, by the sheet's own file. The groups
+ * are mount points, not a second cascade: every part keeps its built order, and
+ * the concatenation of the parts is the whole sheet.
+ */
+function styleGroupOf(sheet) {
+  const file = sheet.file ?? ''
+  if (file.startsWith('features/settings/')) return 'settings'
+  if (file.startsWith('features/home/') || file.startsWith('features/home-ripple/') || file === 'theme/hero.css') return 'home'
+  if (file.startsWith('features/composer/') || file.startsWith('features/context-stats/') || file.startsWith('features/model/') || file.startsWith('features/effort/') || file.startsWith('features/hero-menu/')) return 'composer'
+  if (file.startsWith('features/sidebar-') || file.startsWith('features/account/') || file.startsWith('features/workspace/') || file.startsWith('features/date-groups/') || file === 'theme/sidebar.css') return 'sidebar'
+  if (file.startsWith('features/chat-') || file.startsWith('features/turn-nav/') || file.startsWith('features/process-column/') || file.startsWith('features/row-skip/') || file === 'shared/motion.css') return 'conversation'
+  if (file === 'shared/popover.css') return 'popover'
+  return 'base'
+}
+
 /** The selector root every skin rule hangs off. */
 const SCOPE_TAG = 'body'
 /** The element a rule painting the document has to be written on. */
@@ -504,8 +520,9 @@ function checkHolds(relations) {
  * @param options.gates - `{ composer, palette: { attribute, claude, host }, paletteCard: { attribute }, typeface: { attribute, claude, host }, brand: { attribute, deepseek } }`.
  * @param options.images - brand mark name → its address, for the token sheet.
  * @param options.featureConstants - what the generated feature sheets are written from (scripts/feature-sheets.mjs).
- * @returns `{ main, surface }`: the theme's sheet and the surface sheets (D74),
- *     each minified once every check has read every sheet.
+ * @returns `{ main, surface, parts }`: the theme's sheet, the surface sheets (D74)
+ *     and the theme sheet's ordered parts, each minified once every check has
+ *     read every sheet.
  */
 export function buildStylesheet({ sheets, srcDir, sources, tokenDoc, gates, images, featureConstants }) {
   const names = { claude: new Set(), host: new Set() }
@@ -522,6 +539,9 @@ export function buildStylesheet({ sheets, srcDir, sources, tokenDoc, gates, imag
     return { sheet, text: processSheet(sheet, source, gates, names, read, parts, relations, keyframes).replace(/\n+$/, '') }
   })
   const joined = (surface) => processed.filter((item) => (item.sheet.scope === 'surface') === surface).map((item) => item.text).join('\n\n')
+  const slices = processed
+    .filter((item) => item.sheet.scope !== 'surface')
+    .map((item) => ({ group: item.sheet.file === 'shared/popover.css' ? 'base' : styleGroupOf(item.sheet), text: item.text }))
   for (const name of names.claude) {
     if (!names.host.has(name)) throw new Error(`build: ${name} is defined under the Claude palette or typeface but has no alias under the host's`)
   }
@@ -537,7 +557,14 @@ export function buildStylesheet({ sheets, srcDir, sources, tokenDoc, gates, imag
   checkTokensRead(tokenDoc, readers, sources)
   const main = minifyCss(joined(false))
   checkImportance(main, srcDir)
-  return { main, surface: minifyCss(joined(true)) }
+  // Split after the checks: every rule was read in one ordered sheet, and the
+  // parts keep that order. One text per group, minified separately, so a group
+  // can enter a page without carrying the rules of another.
+  const order = ['base', 'conversation', 'composer', 'sidebar', 'settings', 'home', 'popover']
+  const partText = new Map(order.map((group) => [group, []]))
+  for (const slice of slices) partText.get(slice.group).push(slice.text)
+  const sheetParts = order.map((group) => ({ group, text: minifyCss(partText.get(group).join('\n\n')) }))
+  return { main, surface: minifyCss(joined(true)), parts: sheetParts }
 }
 
 /**

@@ -582,7 +582,10 @@ function sweepInPage(selectors) {
  *     any other refactor) shows here as zero drift.
  */
 async function createImportanceAudit(page, reference) {
-  const original = await page.evaluate((sheet) => document.querySelector(sheet).textContent, SHEET)
+  // The walk's rule ids follow one concatenated sheet: read every part in
+  // document order, walk the whole text in the first tag, restore each part after.
+  const partTexts = await page.evaluate((sheet) => [...document.querySelectorAll(sheet)].map((tag) => tag.textContent), SHEET)
+  const original = partTexts.join('\n')
   // The page functions below share one helper, defined on the page's window.
   await page.evaluate(`(() => { ${SETTLE}\nwindow.settleTransitions = settleTransitions })()`)
   const { annotated, rules, selectors } = planImportance(original)
@@ -600,7 +603,14 @@ async function createImportanceAudit(page, reference) {
   const swept = new Set()
   const unparsed = new Set()
   const states = []
-  const install = (text) => page.evaluate(([sheet, value]) => { document.querySelector(sheet).textContent = value }, [SHEET, text])
+  /** Write one text into the first tag and empty the rest; `parts` writes each tag its own. */
+  const writeTags = (text, parts) => page.evaluate(([sheet, value, texts]) => {
+    const tags = [...document.querySelectorAll(sheet)]
+    if (tags.length === 0) throw new Error('importance: the page mounts no skin stylesheet')
+    tags.forEach((tag, at) => { tag.textContent = texts === null ? (at === 0 ? value : '') : texts[at] ?? '' })
+  }, [SHEET, text, parts])
+  const install = (text) => writeTags(text, null)
+  const installOriginal = () => writeTags(null, partTexts)
   /** The computed values that move when these declarations lose their importance. */
   const differencesWith = (keys) => page.evaluate(diffInPage, { sheet: SHEET, original: annotated, candidate: dropImportance(annotated, new Set(keys)), props })
 
@@ -629,12 +639,12 @@ async function createImportanceAudit(page, reference) {
    */
   async function state(name, only) {
     // The skin can mount its sheet anew between states; the audit's own text goes back in.
-    const current = await page.evaluate((sheet) => document.querySelector(sheet).textContent, SHEET)
+    const current = await page.evaluate((sheet) => [...document.querySelectorAll(sheet)].map((tag) => tag.textContent).join('\n'), SHEET)
     if (current !== annotated && current !== original) throw new Error(`importance: the skin's stylesheet changed during the audit (state ${name})`)
     if (reference !== undefined) {
       const moved = await page.evaluate(diffInPage, { sheet: SHEET, original: reference, candidate: original, props: driftProps })
       if (moved.length > 0) drift.push({ state: name, count: moved.length, first: moved.slice(0, 3) })
-      await install(original)
+      await installOriginal()
     }
     let sentBack = 0
     for (let pass = 0; pass < 40 && dropped.size > 0; pass++) {
@@ -651,7 +661,7 @@ async function createImportanceAudit(page, reference) {
     await install(dropImportance(annotated, dropped))
     const rulesHere = only === undefined ? tried : tried.filter((rule) => only.includes(rule.id))
     const verdict = await page.evaluate(tryInPage, { sheet: SHEET, mark: MARK, rules: rulesHere, skip: [...dropped, ...needed] })
-    await install(original)
+    await installOriginal()
     for (const key of verdict.matched) matched.add(key)
     for (const key of verdict.removable) dropped.add(key)
     for (const key of verdict.needed) needed.add(key)
@@ -671,7 +681,7 @@ async function createImportanceAudit(page, reference) {
         evidence.set(key, { ruleKey: rule.key, selector: rule.selector, prop, state: name, after: found.after, opponents: found.opponents })
         break
       }
-      await install(original)
+      await installOriginal()
     }
     // The dead-selector sweep: ask this state about every selector no state has
     // matched yet, so a selector that never matches one costs one pass per state.

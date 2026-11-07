@@ -18,6 +18,12 @@ import { skin } from './skin'
 export type CloseReason = 'outside' | 'escape' | 'composer'
 
 /**
+ * Why a handle is moved: `'scroll'` is content moving inside its own scroller,
+ * `'viewport'` is the window resizing, and `'composer'` is the card resizing.
+ */
+export type RepositionReason = 'scroll' | 'viewport' | 'composer'
+
+/**
  * Why a pass was asked for. A feature declares the reasons its measurements
  * read; a change it cannot read skips it for that frame.
  */
@@ -53,12 +59,18 @@ export interface FeatureHandle {
   onInput?(target: EventTarget | null): void
   /** Every focusin, after the composer route. */
   onFocusIn?(target: HTMLElement): void
-  /** `'viewport'` (page scroll or resize) or `'composer'` (the composer card changed size). */
-  reposition?(reason: 'viewport' | 'composer'): void
+  /** A window scroll or resize, or the composer card resizing, moved the feature's anchor. */
+  reposition?(reason: RepositionReason): void
   /**
-   * The read phase of the frame a page scroll or resize repositions in, before
-   * every feature's `reposition('viewport')` (D40): a feature that pins boxes
-   * reads them here, so no feature's reposition forces a layout under another's.
+   * Whether this feature's own open surface follows a window scroll. A closed
+   * card leaves it out: no box it reads can move, and a window scroll reaches
+   * only the handles that declare it.
+   */
+  repositionsOnScroll?: boolean
+  /**
+   * The read phase of the frame a window scroll or resize repositions in,
+   * before every feature's `reposition` (D40): a feature that pins boxes reads
+   * them here, so no feature's reposition forces a layout under another's.
    */
   measureReposition?(): void
   /** The locale, the preferences or the model copy changed. */
@@ -223,27 +235,78 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   document.addEventListener('compositionend', onComposerInput, true)
   document.addEventListener('focusin', onGlobalFocusIn, true)
 
-  // Fixed popovers are anchored to their trigger, and page scroll or a resize
-  // moves that anchor, so whichever is open re-resolves it in the same frame.
-  // Scroll fires per frame at most, and a window drag fires far faster: the
-  // callbacks are coalesced into one frame the way the pass is (D40). The pass
-  // of the same change carries the reason its readers declare.
-  let cancelViewportFrame: (() => void) | null = null
-  function onFixedPopoverViewportChange() {
-    if (cancelViewportFrame !== null) return
-    cancelViewportFrame = requestFrame({
+  // Fixed popovers are anchored to their trigger, and a window scroll or a
+  // resize moves that anchor. A scroll inside the conversation moves content,
+  // not the window: the surfaces outside the scroller keep their anchors, and
+  // the pass such a scroll used to wake is not asked for at all. Window events
+  // fire far faster than frames: each path coalesces its own frame (D40).
+  /** A scroll inside the conversation is content movement, not a window change. */
+  function isContentScroll(target: EventTarget | null) {
+    const scroller = findConversationScroller()
+    if (scroller === null) return false
+    return target instanceof Node && (target === scroller || scroller.contains(target))
+  }
+
+  /** Read the open surfaces a window scroll can have moved, in feature order. */
+  function measureOpenRelocations() {
+    for (const name of features) {
+      const handle = handleOf(name)
+      if (handle === undefined || handle.repositionsOnScroll !== true) continue
+      if (typeof handle.measureReposition !== 'function') continue
+      try {
+        handle.measureReposition()
+      } catch (error) {
+        reportError(error)
+      }
+    }
+  }
+
+  /** Reposition the open surfaces a window scroll moved, in the same frame's write phase. */
+  function repositionOpenRelocations() {
+    for (const name of features) {
+      const handle = handleOf(name)
+      if (handle === undefined || handle.repositionsOnScroll !== true) continue
+      if (typeof handle.reposition !== 'function') continue
+      try {
+        handle.reposition('scroll')
+      } catch (error) {
+        reportError(error)
+      }
+    }
+  }
+
+  let cancelScrollFrame: (() => void) | null = null
+  function onWindowScroll(event: Event) {
+    if (isContentScroll(event.target)) return
+    if (cancelScrollFrame !== null) return
+    cancelScrollFrame = requestFrame({
+      read() {
+        measureOpenRelocations()
+      },
+      write() {
+        cancelScrollFrame = null
+        repositionOpenRelocations()
+      },
+    })
+  }
+
+  /** A resize changes boxes the whole page is placed against: measure, reposition and pass, as before. */
+  let cancelResizeFrame: (() => void) | null = null
+  function onWindowResize() {
+    if (cancelResizeFrame !== null) return
+    cancelResizeFrame = requestFrame({
       read() {
         dispatch('measureReposition')
       },
       write() {
-        cancelViewportFrame = null
+        cancelResizeFrame = null
         dispatch('reposition', 'viewport')
       },
     })
     schedule({ reason: 'viewport' })
   }
-  window.addEventListener('resize', onFixedPopoverViewportChange)
-  window.addEventListener('scroll', onFixedPopoverViewportChange, true)
+  window.addEventListener('scroll', onWindowScroll, true)
+  window.addEventListener('resize', onWindowResize)
 
   // A locale switch has to rebuild rows a popover already painted, so the copy
   // sources subscribe here rather than being read at render time only.
@@ -512,13 +575,15 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     stopped = true
     if (cancelPass !== null) cancelPass()
     cancelPass = null
-    if (cancelViewportFrame !== null) cancelViewportFrame()
-    cancelViewportFrame = null
+    if (cancelScrollFrame !== null) cancelScrollFrame()
+    cancelScrollFrame = null
+    if (cancelResizeFrame !== null) cancelResizeFrame()
+    cancelResizeFrame = null
     scheduled = false
     stopClock()
     if (stopPageVisibility !== null) stopPageVisibility()
-    window.removeEventListener('resize', onFixedPopoverViewportChange)
-    window.removeEventListener('scroll', onFixedPopoverViewportChange, true)
+    window.removeEventListener('scroll', onWindowScroll, true)
+    window.removeEventListener('resize', onWindowResize)
     if (localeUnsubscribe !== null) localeUnsubscribe()
     for (const stop of copyUnsubscribes) stop()
     motionQuery.removeEventListener('change', onSystemMotionChange)

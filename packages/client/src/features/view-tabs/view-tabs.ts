@@ -217,7 +217,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let cancelShift: (() => void) | null = null
 
   /** Read the four boxes for one strip. */
-  function takeReading(header: HTMLElement, strip: HTMLElement): StripReading {
+  function takeShiftReading(header: HTMLElement, strip: HTMLElement): StripReading {
     return {
       header,
       strip,
@@ -247,7 +247,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     cancelShift = requestFrame({
       read() {
         const target = pendingShift
-        shiftReading = target === null ? null : takeReading(target.header, target.strip)
+        syncTitlebar()
+        // The caption row places the strip from its stylesheet: the batch's own
+        // placement needs no shift boxes there, and reading them costs a layout.
+        shiftReading = target === null || titlebar ? null : takeShiftReading(target.header, target.strip)
       },
       write() {
         cancelShift = null
@@ -262,11 +265,19 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     })
   }
 
-  /** The pass's read phase: the strip is resolved and its boxes read before anyone writes; the pill travels in the tablist. */
+  /**
+   * The pass's read phase: the strip is resolved and its boxes read before
+   * anyone writes; the pill travels in the tablist. Under the Windows caption
+   * row the strip's placement is the stylesheet's, so only the pill's two
+   * boxes are needed: the shift boxes would be read for a write that never runs.
+   */
   function measure() {
+    // The mode is a page fact the read phase can take before it asks for boxes:
+    // a titlebar flip that arrived since the last pass must skip the shift now.
+    syncTitlebar()
     const found = findStrip()
     measuredStrip = found === null ? null : found.strip
-    reading = found === null ? null : takeReading(found.header, found.strip)
+    reading = found === null || titlebar ? null : takeShiftReading(found.header, found.strip)
     pill.measure(found === null ? null : found.list)
   }
 
@@ -288,7 +299,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     // Windows titlebar mode places the strip itself (view-tabs.css): it is
     // fixed there, so neither the measured shift nor the fallback applies.
     if (titlebar) return
-    const boxes = reading !== null && measuredStrip === strip ? reading : takeReading(header, strip)
+    const boxes = reading !== null && measuredStrip === strip ? reading : takeShiftReading(header, strip)
     writeShift(strip, shiftIn(boxes))
   }
 

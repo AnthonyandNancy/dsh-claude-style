@@ -195,6 +195,11 @@
       "name": "firstPaintDeferredChunks",
       "value": 10,
       "reason": "Each feature manifest that declares load 'deferred' yields exactly one routed script chunk, and the desktop page's shipped preferences want all ten, so a first paint asks for at least this many; a smaller count means one moved back into the bundle or never arrived."
+    },
+    {
+      "name": "scrollPaceMinFrames",
+      "value": 30,
+      "reason": "The 4 s content scroll must carry at least thirty animation-frame samples. The baseline sample recorded 138 frames with a four-times CPU slowdown; a reading under this means the sampler stopped early rather than the page becoming cheaper."
     }
   ]
 }

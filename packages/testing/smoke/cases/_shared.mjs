@@ -59,7 +59,7 @@ function commonChecks(r) {
     r.titlebarTabs === false, JSON.stringify(r.titlebarTabs))
   check('teardown registered with the host', r.teardownRegistered)
   check("the sheet carries this package's own module-system tags, so no sibling's bookkeeping can take it away",
-    r.sheetPlugin === 'dsh-claude-style' && r.sheetPluginCss === 'dsh-claude-style/client.css' && r.sheetClaimable === false,
+    r.sheetPlugin === 'dsh-claude-style' && r.sheetPluginCss === 'dsh-claude-style/client.css' && r.sheetClaimable === false && r.sheetPartsTagged === true,
     JSON.stringify({ plugin: r.sheetPlugin, css: r.sheetPluginCss, claimable: r.sheetClaimable }))
   check("a sibling's untagged sheet stays out of this package's bookkeeping, so no reload of this package removes it",
     r.siblingSheetTag === 'dsh-claude-style/foreign-sheet' && r.siblingSheetClaimable === false && r.siblingSheetSurvives === true,

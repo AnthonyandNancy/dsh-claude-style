@@ -280,6 +280,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
   registerPopover(popoverKey, closeEffortPopover)
 
   ui.effort = {
+    repositionsOnScroll: true,
     measure() {
       sliderBox = effortSlider === null ? null : effortSlider.measure()
     },

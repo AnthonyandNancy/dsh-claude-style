@@ -9,13 +9,11 @@
  * @risk Switching between two sessions makes the tab strip jump sideways a frame or two after the conversation is drawn, which reads as a page still settling.
  */
 import { spec, host, surface } from '../../fixtures/behaviour.mjs'
+import { BUILD_VIEW_STRIP, HEADER_SLOT, TAB_LIST, WINDOWS_TITLEBAR } from '../../fixtures/view-tabs-strip.mjs'
 
-/** The slot the host mounts the conversation header in. */
-const HEADER = host.attributes('shell.header-slot')
-/** The host's own mark on the view tablist. */
-const TABS = host.attributes('header.conversation-tabs')
-/** The Windows caption row, which only the desktop shell writes. */
-const WINDOWS = host('shell.windows-titlebar')
+const HEADER = HEADER_SLOT
+const TABS = TAB_LIST
+const WINDOWS = WINDOWS_TITLEBAR
 const STRIP = surface.attribute('view-tabs.strip')
 const TITLEBAR = surface.attribute('view-tabs.titlebar')
 
@@ -28,7 +26,7 @@ const TITLEBAR = surface.attribute('view-tabs.titlebar')
  */
 function switchSession(t, options) {
   return t.page.evaluate(async (args) => {
-    const [header, tabs, marks, batch, windows, titlebar] = args
+    const [buildSource, header, tabs, marks, batch, windows, titlebar] = args
     const settle = () => window.__dshSmokeProbe.settle()
     // The host's own row: a line of room at its start and its tabs from there.
     const hostStyle = document.createElement('style')
@@ -36,29 +34,8 @@ function switchSession(t, options) {
     document.head.append(hostStyle)
     if (titlebar) document.documentElement.setAttribute(windows, '')
 
-    const build = () => {
-      const slot = document.createElement('div')
-      for (const [name, value] of header) slot.setAttribute(name, value)
-      const row = document.createElement('div')
-      row.className = 'probe-switch-row'
-      const list = document.createElement('div')
-      for (const [name, value] of tabs) list.setAttribute(name, value)
-      list.setAttribute('role', 'tablist')
-      for (const label of ['Chat', 'Trajectory', 'Context']) {
-        const tab = document.createElement('button')
-        tab.type = 'button'
-        tab.setAttribute('role', 'tab')
-        tab.setAttribute('aria-selected', label === 'Chat' ? 'true' : 'false')
-        tab.textContent = label
-        list.append(tab)
-      }
-      const more = document.createElement('button')
-      more.type = 'button'
-      more.textContent = 'More views'
-      row.append(list, more)
-      slot.append(row)
-      return { slot, row, list }
-    }
+    const make = eval(buildSource)
+    const build = () => make(header, tabs, ['Chat', 'Trajectory', 'Context'], { rowClass: 'probe-switch-row', more: true })
 
     let strip = build()
     document.body.append(strip.slot)
@@ -113,7 +90,7 @@ function switchSession(t, options) {
     // cost: D40 — hands the prototype back to the page once the switch has painted.
     Element.prototype.getBoundingClientRect = originalRect
     return { painted, settled, inBatchCallback }
-  }, [HEADER, TABS, { strip: STRIP, titlebar: TITLEBAR }, options.batch, WINDOWS, options.titlebar])
+  }, [BUILD_VIEW_STRIP, HEADER, TABS, { strip: STRIP, titlebar: TITLEBAR }, options.batch, WINDOWS, options.titlebar])
 }
 
 export default spec({ page: 'view-tabs-row' }, ({ test }) => {

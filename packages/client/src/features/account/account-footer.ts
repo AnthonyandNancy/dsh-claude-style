@@ -566,6 +566,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
 
   ui.footer = {
     sync: syncAccountFooter,
+    repositionsOnScroll: true,
     /** The read phase: the entry row's box, so the pass's writes do not force a layout under it. */
     measure: measureAccountRow,
     // The footer sits in the sidebar, outside the column a streaming batch

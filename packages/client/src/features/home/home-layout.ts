@@ -16,6 +16,7 @@ import type { HostContext, HostFiber } from '@dsh-claude-style/engine/host'
 import type { FeatureUi } from '../../core/feature'
 import type manifest from './home-layout.manifest'
 import { copy } from './copy'
+import { addStylesheetGroups, removeStylesheetGroups } from '../../core/stylesheet'
 
 /**
  * The home page's second layout, and the usage panel that fills it.
@@ -274,6 +275,11 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * it opened until it was reloaded.
    */
   function sync() {
+    // The home part is on the page only while the host shows the hero: a
+    // conversation keeps the feature installed (the dock seat renders there),
+    // so installation alone must not put its rules into the cascade.
+    if (heroPhase() && document.body.hasAttribute(HOME_LAYOUT_ATTR)) addStylesheetGroups(['home'])
+    else removeStylesheetGroups(['home'])
     const next = readPrefs().homeLayout
     if (next !== layout) {
       setLayout(next)
@@ -333,6 +339,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     unmountColdSeat()
     usage.stop()
     greeting.restore()
+    removeStylesheetGroups(['home'])
     document.body.removeAttribute(HOME_LAYOUT_ATTR)
     markedRoot?.removeAttribute(HOME_HERO_ATTR)
     markedRoot = null

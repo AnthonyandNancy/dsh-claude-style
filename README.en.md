@@ -104,6 +104,8 @@ To enable them, install the `.ttf` files on your system, or copy them into `$DSH
 | --- | --- |
 | [Design tokens](docs/STYLE.md) | The palette, typography, shape, motion and layer rules |
 | [Performance plan](docs/PERFORMANCE.md) | Where long sessions and streaming output spend their time, what to change and the readings that accept it |
+| [Scroll performance](docs/SCROLL-PERFORMANCE.md) | The measurements, root causes, fixes and acceptance readings for dropped frames while scrolling |
+| [Scroll implementation plan](docs/SCROLL-PERFORMANCE-PLAN.md) | The task order, failing tests, implementation code, verification commands and commit boundaries for the scroll fixes |
 | [Implementation plan](docs/PERFORMANCE-PLAN.md) | The tasks, failing tests, verification commands and commit boundaries split from each proposal |
 | [Architecture decisions](docs/adr/README.md) | One page per direction: background, decision, consequences, revisiting conditions |
 | [Changelog](docs/CHANGELOG.md) | Version history |

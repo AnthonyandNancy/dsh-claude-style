@@ -23,6 +23,7 @@ import type manifest from './settings.manifest'
 import type { SettingsTab, SettingsView } from './settings-controls'
 import type { QuickProvidersHandle } from './quick-providers'
 import { copy } from './copy'
+import { addStylesheetGroups, removeStylesheetGroups } from '../../core/stylesheet'
 
 /** Pause after the last keystroke before the username is written to the settings store. */
 const USERNAME_SAVE_DEBOUNCE_MS = 600
@@ -334,7 +335,12 @@ const settingsNavList = cacheFirstMatch<HTMLElement>(':is([data-dsh-claude-part~
  * can replace the host's default settings gear with the black Claude mark.
  */
 export function syncSettingsNav() {
+  // The nav list is cached by the engine's accessor and stands only inside the
+  // settings surface: its presence is the page fact the settings part rides on,
+  // so the pass pays no new document walk to answer it.
   const navList = settingsNavList()
+  if (navList !== null) addStylesheetGroups(['settings'])
+  else removeStylesheetGroups(['settings'])
   if (!navList) return
   if (navList.querySelector(`[data-dsh-section="${SETTINGS_SECTION_ID}"]`) !== null) return
   // The section's position among the slot's entries is the nav cell's
@@ -432,6 +438,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     )), 'dsh-claude-style: settings section')
   })
   return () => {
+    removeStylesheetGroups(['settings'])
     stopThemeFlip()
     hostSettings.stopSettingsDrive()
     if (ui && ui.settingsNav) {

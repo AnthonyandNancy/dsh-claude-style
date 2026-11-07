@@ -542,6 +542,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
 
   ui.model = {
     sync: syncModelControl,
+    repositionsOnScroll: true,
     // The seat sits on the composer, outside the column a streaming batch
     // touches, so such a batch skips this pass (D40).
     skipOnContentOnly: true,

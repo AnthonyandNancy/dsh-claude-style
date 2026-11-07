@@ -3,8 +3,8 @@
  * the source imports by name instead of reading it from text placeholders.
  */
 declare module 'virtual:dsh-claude-style/generated' {
-  /** The skin's stylesheet: the generated token sheet and the src/ stylesheets in order, the composer gate stamped (D9). */
-  export const STYLESHEET: string
+  /** The skin's stylesheet in the build's order, each part with the page or surface that needs it. */
+  export const STYLESHEET_PARTS: { group: 'base' | 'conversation' | 'composer' | 'sidebar' | 'settings' | 'home' | 'popover', text: string }[]
   /** The surface sheets (`scope: 'surface'`), scoped to `body[data-dsh-claude-surface]` and mounted by the surface feature (D74). */
   export const SURFACE_STYLESHEET: string
   /** Vendor lockup markup by brand id (packages/assets/src/icons/combine/). */

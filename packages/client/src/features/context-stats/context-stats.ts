@@ -23,6 +23,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   const stats = createSessionStats(ctx, ring)
 
   ui.contextStats = {
+    repositionsOnScroll: true,
     measure: stats.measure,
     sync: stats.sync,
     /**

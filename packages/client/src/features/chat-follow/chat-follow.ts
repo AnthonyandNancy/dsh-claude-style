@@ -556,6 +556,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   const cards = observeComposerCards()
   document.body.setAttribute(CHAT_FOLLOW_ATTR, '')
   ui.chatFollow = {
+    repositionsOnScroll: true,
     sync() {
       placeFollowTail(tailStamp, cards.all())
     },

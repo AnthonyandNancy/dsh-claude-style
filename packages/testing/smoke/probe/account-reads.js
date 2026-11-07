@@ -70,10 +70,14 @@
     // The skin's sheet wears this package's own module-system tags (D9): the
     // host's claim sweep reads untagged tags alone, so a tagged sheet cannot be
     // claimed by a sibling package and removed by that sibling's reload.
-    var skinStyle = document.getElementById('dsh-claude-style-style')
+    var skinStyles = Array.prototype.slice.call(document.querySelectorAll('style[data-plugin-css="dsh-claude-style/client.css"]'))
+    var skinStyle = skinStyles[0] || null
     r.sheetPlugin = skinStyle ? skinStyle.getAttribute('data-plugin') : null
     r.sheetPluginCss = skinStyle ? skinStyle.getAttribute('data-plugin-css') : null
     r.sheetClaimable = skinStyle ? skinStyle.matches('style:not([data-plugin])') : null
+    r.sheetPartsTagged = skinStyles.length > 0 && skinStyles.every(function (tag) {
+      return tag.getAttribute('data-plugin') === 'dsh-claude-style' && tag.getAttribute('data-plugin-css') === 'dsh-claude-style/client.css' && !tag.matches('style:not([data-plugin])')
+    })
     // The sibling's sheet (the stand-in parts planted it before this bundle's factory
     // ran): this package must keep it out of its own bookkeeping, so no reload of
     // this package removes it (D9).

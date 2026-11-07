@@ -1,5 +1,7 @@
 import { buildElement, setAttributeIfChanged } from '@dsh-claude-style/engine/dom'
+import { holdPopoverStylesheet, releasePopoverStylesheet } from '../core/stylesheet'
 import { inPageBox, pageViewport } from './page-zoom'
+import { motionMs } from './motion'
 
 /**
  * The skin's popovers: one card shell, one dwell and grace, one card on screen
@@ -291,12 +293,25 @@ export function closeOtherPopovers(name: string) {
  * menu is up.
  */
 export function setMenuPopoverOpen(card: Element, open: boolean, trigger: Element | null = null) {
+  // One hold per card, whatever path reaches it: a sync that rewrites the same
+  // open state must not count the card twice.
+  const held = card.hasAttribute('data-dsh-claude-sheet-held')
+  if (open && !held) {
+    card.setAttribute('data-dsh-claude-sheet-held', '')
+    holdPopoverStylesheet()
+  }
   if (open) {
     card.setAttribute('data-open', 'true')
     card.setAttribute('role', 'menu')
   } else {
     card.setAttribute('data-open', 'false')
     card.removeAttribute('role')
+    if (held) {
+      card.removeAttribute('data-dsh-claude-sheet-held')
+      // The card keeps the part through its closing fade: the shared card's
+      // closed rules supply the hidden/transparent base the fade lands on.
+      window.setTimeout(() => releasePopoverStylesheet(), motionMs('--dsh-claude-duration-exit'))
+    }
   }
   if (trigger !== null) setAttributeIfChanged(trigger, 'aria-expanded', open ? 'true' : 'false')
 }

@@ -14,7 +14,7 @@ import { reportFeatureFailure } from '@dsh-claude-style/engine/scheduler'
 import { installScheduler } from './core/scheduler'
 import type { HandleName, Ui } from './core/scheduler'
 import { installPageVisibility, pageHidden } from './core/page-visibility'
-import { mountStylesheet, parkForeignSheets } from './core/stylesheet'
+import { mountStylesheet, parkForeignSheets, resetStylesheetGroups, syncStylesheetGroups } from './core/stylesheet'
 import { peerPresent, subscribePeerPresence } from './shared/peer-plugin'
 import { pageOwner, subscribePageOwner } from './shared/visual-owner'
 import type { PageOwner } from './shared/visual-owner'
@@ -169,6 +169,7 @@ export function apply(ctx: HostContext) {
       offOwnerWatch = null
     }
     release()
+    resetStylesheetGroups()
     if (offPeerWatch !== null) {
       offPeerWatch()
       offPeerWatch = null
@@ -362,7 +363,10 @@ export function apply(ctx: HostContext) {
     adoptPrefs(prefs)
     // The sheet carries this package's own tags and is unmounted by
     // release(); the features install onto a page that already wears it.
-    if (stopStylesheet === null) stopStylesheet = mountStylesheet()
+    if (stopStylesheet === null) {
+      stopStylesheet = mountStylesheet()
+      syncStylesheetGroups()
+    }
     // The page's visibility, mirrored for the sheet just mounted and for the
     // clocks in script that stop with it (core/page-visibility.ts).
     if (stopVisibility === null) stopVisibility = installPageVisibility()

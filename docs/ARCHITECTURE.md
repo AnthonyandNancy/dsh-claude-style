@@ -65,7 +65,7 @@ React 与宿主包按名字导入，始终外部化，由宿主提供。只有�
 
 ## 性能
 
-长会话、流式输出与连续输入下的开销，按它落在哪一层来读：`packages/engine/src/bus.ts` 的分发、`packages/engine/src/scheduler.ts` 的帧内同步、各功能读写布局的时机、样式表与合成路径、清单里的延迟装载。`docs/PERFORMANCE.md` 把这几层各自的改法、可见结果不变的依据与验收读数写在一起；性能改动先读它，再按 D40、D9、D76 的约束落代码。
+长会话、流式输出与连续输入下的开销，按它落在哪一层来读：`packages/engine/src/bus.ts` 的分发、`packages/engine/src/scheduler.ts` 的帧内同步、各功能读写布局的时机、样式表与合成路径、清单里的延迟装载。`docs/PERFORMANCE.md` 把这几层各自的改法、可见结果不变的依据与验收读数写在一起；滚动路径由滚轮与滚动容器触发，和流式批次走的不是同一条输入，它的证据与整改写在 `docs/SCROLL-PERFORMANCE.md`。性能改动先读这两份文档，再按 D40、D9、D76 的约束落代码。
 
 ## 检查
 

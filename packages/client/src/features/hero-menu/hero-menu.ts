@@ -322,7 +322,7 @@ const findCardTrigger = cacheFirstMatch<HTMLElement>('[data-dsh-claude-part~="ca
   // however that menu was opened.
   registerPopover('hero', closeHeroMenu)
 
-  ui.heroMenu = { sync: syncHeroMenu, reposition: repositionHeroMenu }
+  ui.heroMenu = { sync: syncHeroMenu, reposition: repositionHeroMenu, repositionsOnScroll: true }
   return () => {
     hoverIntent.cancel()
     openedByHover = false
