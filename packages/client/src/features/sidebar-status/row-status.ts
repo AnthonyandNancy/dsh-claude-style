@@ -1,7 +1,9 @@
 import { SIDEBAR_RUNNING_TITLE_ATTR, SIDEBAR_STATUS_ATTR } from '../../constants'
 import { observeSize } from '@dsh-claude-style/engine/bus'
+import { entryInlineSize } from '@dsh-claude-style/engine/size'
 import { SESSION_PHASE_ATTRIBUTE, SESSION_STATUS_OUTLET_SELECTOR } from '@dsh-claude-style/contracts/dom'
 import { setAttributeIfChanged } from '@dsh-claude-style/engine/dom'
+import { sidebarDragging } from '../../shared/page-zoom'
 
 /** Keep the host's primary status, screen-reader labels and event targets in place. */
 export class RightSessionStatus {
@@ -44,7 +46,16 @@ export class RightSessionStatus {
     if (title !== this.title) {
       this.stopTitleSize?.()
       this.title = title
-      this.stopTitleSize = title && this.changed ? observeSize(title, this.changed) : null
+      let width = 0
+      this.stopTitleSize = title && this.changed ? observeSize(title, (entries) => {
+        const next = entryInlineSize(entries[entries.length - 1])
+        if (width !== 0 && Math.abs(next - width) < 0.5) return
+        width = next
+        // The held edge reports the final width through the release's own
+        // `sidebar-width` pass; an intermediate width is no new answer.
+        if (sidebarDragging()) return
+        this.changed?.()
+      }) : null
     }
     if (applicable) setAttributeIfChanged(this.row, SIDEBAR_RUNNING_TITLE_ATTR, '')
     else this.row.removeAttribute(SIDEBAR_RUNNING_TITLE_ATTR)

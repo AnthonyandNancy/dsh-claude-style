@@ -101,3 +101,5 @@ export { default as composerModelCss } from './features/model/model-picker.css?r
 export { default as composerVarsCss } from './features/composer/vars.css?raw'
 export { default as composerSwappingCss } from './shared/swapping-text.css?raw'
 export { setSwappingText, releaseSwappingText } from './shared/swapping-text'
+
+export { SIDEBAR_DRAGGING_ATTRIBUTE } from './shared/page-zoom'

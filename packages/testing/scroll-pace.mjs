@@ -10,6 +10,7 @@
 import { check } from './lane.mjs'
 import { bound } from './bounds.mjs'
 import { sendPrompt, waitForTurn } from './prompt.mjs'
+import { fillTranscript, frameCostScenario, idleThen, readSample, resetSample, samplerInit } from './scroll-sample.mjs'
 
 /** The host's conversation scroller (CONVERSATION_SCROLL_SELECTOR). */
 const SCROLLER = '[data-conversation-scroll]'
@@ -18,69 +19,17 @@ const FILL_TURNS = 8
 
 /** Start the readings before the page's own scripts run. */
 function initScript() {
-  const state = window.__scrollPace = {
-    passes: [], rects: 0, styles: 0, queries: 0, frames: [], longtasks: [], extraFrames: 0,
-  }
-  const raf = window.requestAnimationFrame.bind(window)
-  window.requestAnimationFrame = (callback) => { state.extraFrames += 1; return raf(callback) }
-  window.__dshSmokeHost = window.__dshSmokeHost ?? {}
-  window.__scrollPaceClear = () => {
-    state.passes.length = 0
-    state.rects = 0
-    state.styles = 0
-    state.queries = 0
-    state.frames.length = 0
-    state.longtasks.length = 0
-    state.extraFrames = 0
-    window.__dshPassReadings?.clear()
-  }
-  new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) state.longtasks.push(Math.round(entry.duration))
-  }).observe({ entryTypes: ['longtask'] })
-  let last = performance.now()
-  const tick = (now) => {
-    state.frames.push(Math.round((now - last) * 100) / 100)
-    last = now
-    if (state.frames.length < 12000) raf(tick)
-  }
-  raf(tick)
-  const boxed = (original) => function (...args) { state.rects += 1; return original.apply(this, args) }
-  Element.prototype.getBoundingClientRect = boxed(Element.prototype.getBoundingClientRect)
-  Element.prototype.getClientRects = boxed(Element.prototype.getClientRects)
-  const styled = (original) => function (...args) { state.styles += 1; return original.apply(this, args) }
-  window.getComputedStyle = styled(window.getComputedStyle)
-  const queried = (original) => function (...args) { state.queries += 1; return original.apply(this, args) }
-  Document.prototype.querySelector = queried(Document.prototype.querySelector)
-  Document.prototype.querySelectorAll = queried(Document.prototype.querySelectorAll)
+  samplerInit('__scrollPace')
 }
 
 /** Empty the counters before one phase. */
 function reset(page) {
-  return page.evaluate(() => window.__scrollPaceClear())
+  return resetSample(page, '__scrollPace')
 }
 
 /** Read one phase's counters as the numbers the checks bound. */
 function read(page) {
-  return page.evaluate(() => {
-    const state = window.__scrollPace
-    const gaps = state.frames.slice().sort((left, right) => left - right)
-    const at = (share) => gaps.length === 0 ? 0 : gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * share))]
-    const passes = window.__dshPassReadings ? window.__dshPassReadings.read() : []
-    return {
-      passReadings: window.__dshPassReadings !== undefined,
-      passes: passes.length,
-      maxMeasures: Math.max(0, ...passes.map((reading) => reading.measures)),
-      maxSyncs: Math.max(0, ...passes.map((reading) => reading.syncs)),
-      rects: state.rects,
-      styles: state.styles,
-      queries: state.queries,
-      frames: gaps.length,
-      p95: at(0.95),
-      over33: gaps.filter((value) => value > 33).length,
-      longTotal: state.longtasks.reduce((sum, duration) => sum + duration, 0),
-      extraFrames: state.extraFrames,
-    }
-  })
+  return readSample(page, '__scrollPace', ['measures', 'syncs'])
 }
 
 /** Wheel across the conversation for `ms`, reversing direction every 12 steps. */
@@ -139,26 +88,16 @@ async function windowScroll(page) {
 
 export function scrollPaceScenario() {
   return {
-    script: 'long',
-    prompt: 'write a long answer',
-    delayMs: 60,
-    viewport: { width: 1280, height: 900 },
-    initScript,
-    async beforeSend({ page }) {
-      for (let turn = 1; turn <= FILL_TURNS; turn += 1) {
-        await sendPrompt(page, `fill the transcript ${turn}`)
-        await waitForTurn(page)
-      }
-      await page.waitForTimeout(1200)
-    },
+    ...frameCostScenario({
+      viewport: { width: 1280, height: 900 },
+      initScript,
+      fill: ({ page }) => fillTranscript(page, sendPrompt, waitForTurn, FILL_TURNS),
+    }),
     async afterTurn({ page }) {
-      await reset(page)
-      await page.waitForTimeout(2000)
-      const idle = await read(page)
-
-      await reset(page)
-      const contentSteps = await wheel(page, 4000)
-      const contentScroll = { ...await read(page), steps: contentSteps }
+      const { idle, phase: contentScroll } = await idleThen(page, reset, read, async () => {
+        const steps = await wheel(page, 4000)
+        return { ...await read(page), steps }
+      })
 
       const windowPhase = await windowScroll(page)
       const windowScrollReading = { ...await read(page), ...windowPhase }

@@ -234,6 +234,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   ui.workspace = {
     measure,
     sync,
+    // The control's box follows the sidebar's width, and a held edge moves it
+    // every frame: the gesture's release asks for the pass that measures it
+    // once, so only the sidebar's own structure wakes this handle here.
+    wakesOn: ['sidebar'],
     // The archived list reads its labels from the skin's copy; a locale change
     // has to reach the rows the page already holds.
     onCopyChange() { list.copyChanged() },

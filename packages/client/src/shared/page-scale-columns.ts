@@ -24,8 +24,9 @@
  */
 import { observeMatches, subscribeMutations } from '@dsh-claude-style/engine/bus'
 import { cacheFirstMatch } from '@dsh-claude-style/engine/host'
-import { ROOT_SLOT_SELECTOR, SIDEBAR_HANDLE_SELECTOR, SIDEBAR_ROOT_SELECTOR } from '@dsh-claude-style/contracts/dom'
+import { RIGHTBAR_HANDLE_SELECTOR, ROOT_SLOT_SELECTOR, SIDEBAR_HANDLE_SELECTOR, SIDEBAR_ROOT_SELECTOR } from '@dsh-claude-style/contracts/dom'
 import { subscribePrefs } from '../core/prefs'
+import { SIDEBAR_DRAGGING_ATTRIBUTE } from './page-zoom'
 
 /** One length in the host's written column list, and the bracket group a length
  * may stand inside (`minmax(0px, 0px)`). */
@@ -253,6 +254,32 @@ export function installFrameColumns(vocabulary: FrameColumnsVocabulary) {
   }
 
   const offPrefs = subscribePrefs(sync)
+
+  /** The pointer that went down on the sidebar's edge, while one is held. */
+  let heldPointer: number | null = null
+
+  /** Raise the mark for the sidebar's edge on the press. */
+  function hold(event: PointerEvent) {
+    const target = event.target instanceof Element ? event.target : null
+    if (target === null || target.closest(SIDEBAR_HANDLE_SELECTOR) === null) return
+    if (heldPointer !== null) return
+    heldPointer = event.pointerId
+    document.body.setAttribute(SIDEBAR_DRAGGING_ATTRIBUTE, '')
+  }
+
+  /** Drop the mark at the release, wherever the pointer is. */
+  function release(event: PointerEvent) {
+    if (heldPointer === null || event.pointerId !== heldPointer) return
+    heldPointer = null
+    document.body.removeAttribute(SIDEBAR_DRAGGING_ATTRIBUTE)
+  }
+
+  // The host's handle writes its own tracks from the pointer capture it takes
+  // on the press; the skin hears the same press and release and keeps one mark
+  // for the surfaces that wait for the release.
+  window.addEventListener('pointerdown', hold, true)
+  window.addEventListener('pointerup', release, true)
+  window.addEventListener('pointercancel', release, true)
   sync()
 
   return {
@@ -262,6 +289,11 @@ export function installFrameColumns(vocabulary: FrameColumnsVocabulary) {
       sidebars.release()
       handles.release()
       offPrefs()
+      window.removeEventListener('pointerdown', hold, true)
+      window.removeEventListener('pointerup', release, true)
+      window.removeEventListener('pointercancel', release, true)
+      heldPointer = null
+      document.body.removeAttribute(SIDEBAR_DRAGGING_ATTRIBUTE)
       for (const [box, { declaration, off }] of heard) {
         off()
         const seen = seenOn(box)

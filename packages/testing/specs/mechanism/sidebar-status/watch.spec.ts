@@ -151,8 +151,11 @@ test('the shared watch invalidates title reads while the write phase never measu
   const options = observe.mock.calls.find(([target]) => target === current.root)?.[1]
   expect(options?.characterData).toBe(true)
   expect(options?.attributeFilter).toEqual(expect.arrayContaining([
-    SESSION_PHASE_ATTRIBUTE, PART, 'hidden', 'aria-hidden', 'contenteditable', 'style', 'class',
+    SESSION_PHASE_ATTRIBUTE, PART, 'hidden', 'aria-hidden', 'contenteditable', 'class',
   ]))
+  // The host writes the sidebar's width into the root's style every frame of a
+  // drag; that write is no row change, and the pass reads boxes rather than it.
+  expect(options?.attributeFilter).not.toContain('style')
 
   // cost: D40 — geometry belongs to the measure phase, never the DOM-writing phase.
   const bounds = vi.spyOn(title, 'getBoundingClientRect')
@@ -177,10 +180,17 @@ test('the shared watch invalidates title reads while the write phase never measu
   feature.sync()
   expect(row.hasAttribute(RUNNING_TITLE)).toBe(true)
 
+  // An inline write that takes the title out of paint is a row fact too. The
+  // root's style filter is gone, so the title's size subscription stands for
+  // it: the box it watches follows the hidden title, and the pass runs again.
   const beforeStyle = feature.calls()
   title.style.opacity = '0'
-  await settle()
+  await frames(2)
+  title.style.opacity = '1'
+  await frames(2)
   expect(feature.calls()).toBeGreaterThan(beforeStyle)
+  title.style.opacity = '0'
+  feature.measure()
   feature.sync()
   expect(row.hasAttribute(RUNNING_TITLE)).toBe(false)
 })

@@ -27,7 +27,7 @@ export type RepositionReason = 'scroll' | 'viewport' | 'composer'
  * Why a pass was asked for. A feature declares the reasons its measurements
  * read; a change it cannot read skips it for that frame.
  */
-export type WakeReason = 'content' | 'sidebar' | 'composer' | 'header' | 'viewport' | 'other'
+export type WakeReason = 'content' | 'sidebar' | 'sidebar-width' | 'composer' | 'header' | 'viewport' | 'other'
 
 /**
  * A feature's handle on the shared `ui` registry. Every hook is optional: the
@@ -117,6 +117,12 @@ export interface SchedulerSources {
   systemMotionChanged(): void
   /** Told after every pass, for the page's own cost readings. */
   reportPass?(reading: { measures: number, syncs: number }): void
+  /**
+   * The sidebar column's own width, as a change of boxes rather than of
+   * structure. The one owner of the size observation is the engine; the skin
+   * hands the answer in (D73).
+   */
+  observeSidebarWidth?(listener: () => void): () => void
 }
 
 /** Say once, loudly, that a feature was switched off: the console line is its only trace. */
@@ -336,6 +342,12 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   // The account's name and the launcher's contract land after the first pass
   // too: they ask for a pass and nothing more.
   const refreshUnsubscribes = sources.refresh.map((source) => source(() => { schedule() }))
+
+  // A width write on the sidebar is its own reason: the structural handles do
+  // not read it, and the ones that measure a box across it do (D40).
+  const stopSidebarWidth = sources.observeSidebarWidth?.(() => {
+    schedule({ reason: 'sidebar-width' })
+  }) ?? null
 
   let observedCard: HTMLElement | null = null
   /** Stops watching the observed card's size. */
@@ -588,6 +600,7 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     for (const stop of copyUnsubscribes) stop()
     motionQuery.removeEventListener('change', onSystemMotionChange)
     for (const stop of refreshUnsubscribes) stop()
+    if (stopSidebarWidth !== null) stopSidebarWidth()
     stopMutations()
     if (stopCardSize !== null) stopCardSize()
     stopCardSize = null
