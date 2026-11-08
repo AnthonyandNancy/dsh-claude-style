@@ -108,6 +108,8 @@ The mascot bubble's pixel text is set in [PoxiaoPixel](https://diaowinner.itch.i
 | [Performance plan](docs/PERFORMANCE.md) | Where long sessions and streaming output spend their time, what to change and the readings that accept it |
 | [Scroll performance](docs/SCROLL-PERFORMANCE.md) | The measurements, root causes, fixes and acceptance readings for dropped frames while scrolling |
 | [Scroll implementation plan](docs/SCROLL-PERFORMANCE-PLAN.md) | The task order, failing tests, implementation code, verification commands and commit boundaries for the scroll fixes |
+| [Sidebar drag and scroll performance](docs/SIDEBAR-SCROLL-PERFORMANCE.md) | The measurements, root causes, fixes and acceptance readings for the two stutters |
+| [Sidebar drag and scroll implementation plan](docs/SIDEBAR-SCROLL-PERFORMANCE-PLAN.md) | The task order, failing tests, implementation code, verification commands and commit boundaries for the fixes |
 | [Implementation plan](docs/PERFORMANCE-PLAN.md) | The tasks, failing tests, verification commands and commit boundaries split from each proposal |
 | [Architecture decisions](docs/adr/README.md) | One page per direction: background, decision, consequences, revisiting conditions |
 | [Changelog](docs/CHANGELOG.md) | Version history |
