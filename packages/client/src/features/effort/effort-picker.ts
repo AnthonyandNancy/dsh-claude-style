@@ -265,6 +265,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
 
   function teardown() {
     effortHoverIntent.cancel()
+    if (effortPop !== null) setMenuPopoverOpen(effortPop, false)
     // The slider's own waits — a hold's document listeners, a pending move, the
     // wait for the host's echo — go before the card it lives in is dropped.
     if (effortSlider !== null) effortSlider.dispose()

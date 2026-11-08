@@ -1,4 +1,6 @@
 import * as React from 'react'
+import { holdPopoverStylesheet, releasePopoverStylesheet } from '../../core/stylesheet'
+import { motionMs } from '../../shared/motion'
 
 /**
  * The percentage row's control, shared by the settings rows that offer one
@@ -29,7 +31,26 @@ export function PercentControl(props: {
   const [open, setOpen] = React.useState(false)
   const control = React.useRef<HTMLDivElement>(null)
   const range = React.useRef<HTMLInputElement>(null)
+  /** This seekbar's own hold on the opened surface, while it stands. */
+  const hold = React.useRef<symbol | null>(null)
   React.useEffect(() => { setText(String(props.percent)) }, [props.percent])
+  // The seekbar is a shared popover card: its opened rules arrive with the
+  // card and stay through its exit fade, the same way every other card's do.
+  React.useEffect(() => {
+    if (open) {
+      if (hold.current === null) hold.current = holdPopoverStylesheet()
+      return
+    }
+    if (hold.current === null) return
+    const token = hold.current
+    hold.current = null
+    releasePopoverStylesheet(token, motionMs('--dsh-claude-duration-exit'))
+  }, [open])
+  React.useEffect(() => () => {
+    if (hold.current === null) return
+    releasePopoverStylesheet(hold.current)
+    hold.current = null
+  }, [])
 
   /** Write one percentage, held to the row's range, and leave the field on what it lands on. */
   function write(percent: number) {

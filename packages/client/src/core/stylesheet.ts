@@ -49,8 +49,15 @@ export const STYLE_GROUP_ATTRIBUTE = 'data-dsh-claude-sheet'
 
 const activeGroups = new Set<StyleGroup>(INITIAL_STYLE_GROUPS)
 
-/** The open surfaces sharing the popover part: several cards can be up at once. */
-let popoverHolders = 0
+/**
+ * The open surfaces sharing the popover part: several cards can be up at once.
+ * Each holder is its own token, so a close→open before the exit fade ends
+ * cancels that holder's pending release rather than letting it take the part
+ * out from under the reopened card.
+ */
+const popoverHolders = new Set<symbol>()
+/** Each holder's pending release, by its token. */
+const popoverReleases = new Map<symbol, number>()
 
 /** Add groups the page or a surface just brought in, before it paints. */
 export function addStylesheetGroups(groups: readonly StyleGroup[]) {
@@ -67,10 +74,6 @@ export function addStylesheetGroups(groups: readonly StyleGroup[]) {
 export function removeStylesheetGroups(groups: readonly StyleGroup[]) {
   let changed = false
   for (const group of groups) {
-    if (group === 'popover') {
-      popoverHolders = Math.max(0, popoverHolders - 1)
-      if (popoverHolders > 0) continue
-    }
     if (!activeGroups.has(group) || group === 'base' || group === 'conversation' || group === 'sidebar') continue
     activeGroups.delete(group)
     changed = true
@@ -80,16 +83,36 @@ export function removeStylesheetGroups(groups: readonly StyleGroup[]) {
 
 /**
  * A card opened: the popover part enters before its first painted frame. The
- * card's own feature calls this once per open, and owns the matching remove.
+ * card's own feature holds one token per open and releases that same token.
+ *
+ * @returns the token this card holds.
  */
 export function holdPopoverStylesheet() {
-  popoverHolders += 1
+  const token = Symbol('popover')
+  popoverHolders.add(token)
   addStylesheetGroups(['popover'])
+  return token
 }
 
-/** A card closed: the part stays while another card is open. */
-export function releasePopoverStylesheet() {
-  removeStylesheetGroups(['popover'])
+/**
+ * A card closed: the part stays while another card is open. A holder yet to
+ * close may ask its release to wait for the exit fade.
+ *
+ * @param token - the token `holdPopoverStylesheet()` answered for this card.
+ * @param afterMs - wait this long before the part leaves, for the closing fade.
+ *     A later release of the same token replaces that wait.
+ */
+export function releasePopoverStylesheet(token: symbol, afterMs = 0) {
+  const pending = popoverReleases.get(token)
+  if (pending !== undefined) window.clearTimeout(pending)
+  const drop = () => {
+    popoverReleases.delete(token)
+    if (!popoverHolders.delete(token)) return
+    if (popoverHolders.size > 0) return
+    removeStylesheetGroups(['popover'])
+  }
+  if (afterMs > 0) popoverReleases.set(token, window.setTimeout(drop, afterMs))
+  else drop()
 }
 
 /** Write the browser half's groups into the tags the mount just made. */
@@ -101,6 +124,8 @@ export function syncStylesheetGroups() {
 export function resetStylesheetGroups() {
   activeGroups.clear()
   for (const group of INITIAL_STYLE_GROUPS) activeGroups.add(group)
-  popoverHolders = 0
+  for (const timer of popoverReleases.values()) window.clearTimeout(timer)
+  popoverReleases.clear()
+  popoverHolders.clear()
   clearStylesheetGroups(STYLE_ID)
 }

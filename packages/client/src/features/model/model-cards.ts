@@ -303,6 +303,10 @@ export function createModelCards(options: {
     sweep() { removeStrayNodes(document, popoverSelector, [modelPop, modelSubPop]) },
     /** Take both cards out of the document and forget their nodes; the seat is the pass's to sweep. */
     dropNodes() {
+      // A card torn down while open releases its own hold; the node is about
+      // to leave, so there is no exit fade to wait for.
+      if (modelSubPop !== null) setMenuPopoverOpen(modelSubPop, false)
+      if (modelPop !== null) setMenuPopoverOpen(modelPop, false)
       removeStrayNodes(document, popoverSelector, [])
       modelPop = null
       modelSubPop = null

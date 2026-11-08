@@ -267,6 +267,9 @@ export function createPermissionCard(catalog: Pick<PermissionCatalog, 'restingLa
     },
     /** Forget the nodes, taking the popover out of the document. */
     clear() {
+      // A tier card torn down while open releases its own hold; the node is
+      // about to leave, so there is no exit fade to wait for.
+      if (permPopover !== null) setMenuPopoverOpen(permPopover, false)
       if (permPopover !== null && permPopover.parentElement !== null) {
         permPopover.parentElement.removeChild(permPopover)
       }

@@ -292,13 +292,17 @@ export function closeOtherPopovers(name: string) {
  * and a card toggled without it leaves the reader told "collapsed" while the
  * menu is up.
  */
+
+/** Each card's own hold, so a repeated open state keeps one token and a close releases it. */
+const popoverHoldTokens = new WeakMap<Element, symbol>()
+
 export function setMenuPopoverOpen(card: Element, open: boolean, trigger: Element | null = null) {
   // One hold per card, whatever path reaches it: a sync that rewrites the same
   // open state must not count the card twice.
   const held = card.hasAttribute('data-dsh-claude-sheet-held')
   if (open && !held) {
     card.setAttribute('data-dsh-claude-sheet-held', '')
-    holdPopoverStylesheet()
+    popoverHoldTokens.set(card, holdPopoverStylesheet())
   }
   if (open) {
     card.setAttribute('data-open', 'true')
@@ -310,7 +314,9 @@ export function setMenuPopoverOpen(card: Element, open: boolean, trigger: Elemen
       card.removeAttribute('data-dsh-claude-sheet-held')
       // The card keeps the part through its closing fade: the shared card's
       // closed rules supply the hidden/transparent base the fade lands on.
-      window.setTimeout(() => releasePopoverStylesheet(), motionMs('--dsh-claude-duration-exit'))
+      const token = popoverHoldTokens.get(card)
+      popoverHoldTokens.delete(card)
+      if (token !== undefined) releasePopoverStylesheet(token, motionMs('--dsh-claude-duration-exit'))
     }
   }
   if (trigger !== null) setAttributeIfChanged(trigger, 'aria-expanded', open ? 'true' : 'false')

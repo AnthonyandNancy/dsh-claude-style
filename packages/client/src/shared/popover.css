@@ -17,6 +17,10 @@
    property, taken in one step once the fade has ended, so every opening grows
    the full distance without a closing state of its own. A menu the host MOUNTS
    instead plays the shared dsh-claude-dropdown-in entrance (shared/motion.css, D9). */
+/* The card's own paint is the base every closed card keeps: the page's
+   transparency reaches no popover, and the card is still drawn where the
+   placement reads it. The opened surface below adds only what an open card
+   paints (its entrance, its rows and the host menus it repaints). */
 body[data-dsh-claude-style] .dsh-claude-popover-card {
   background: var(--dsw-alias-bg-overlay, #ffffff);
   border: 1px solid var(--dsw-alias-border-l1, #e9e9e9);
@@ -41,6 +45,19 @@ body[data-dsh-claude-style] .dsh-claude-popover-card {
     scale 0s linear var(--dsh-claude-duration-exit),
     visibility 0s linear var(--dsh-claude-duration-exit);
 }
+
+/* ---------- the opened surface: the card, its rows and the host menus it repaints ---------- */
+/* Everything below belongs to a card the reader has opened. The hidden base
+   above stays on every page: a closed card keeps the skin's visibility,
+   pointer and layer rules after the opened surface's rules leave. */
+body[data-dsh-claude-style][data-ds-dark-theme] .dsh-claude-popover-card {
+  background: var(--dsh-claude-card);
+  /* The edge is the dark border ladder's highlight (tokens.json), so the card
+     keeps the border it always had; only the drop under it deepens. */
+  border-color: var(--dsw-alias-border-l1);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+/* @popover-open */
 body[data-dsh-claude-style] .dsh-claude-popover-card[data-open="true"] {
   visibility: visible;
   transition:
@@ -52,13 +69,6 @@ body[data-dsh-claude-style] .dsh-claude-popover-card[data-open="true"] {
   pointer-events: auto;
   transform: none;
   scale: 1;
-}
-body[data-dsh-claude-style][data-ds-dark-theme] .dsh-claude-popover-card {
-  background: var(--dsh-claude-card);
-  /* The edge is the dark border ladder's highlight (tokens.json), so the card
-     keeps the border it always had; only the drop under it deepens. */
-  border-color: var(--dsw-alias-border-l1);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 /* ---------- Host menu cards the skin repaints ---------- */
 /* The host's shared Menu card, wherever a feature stamps it: the account menu
