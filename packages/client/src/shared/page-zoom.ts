@@ -22,6 +22,24 @@ export function pageZoomFactor() {
 }
 
 /**
+ * The body mark the skin raises while the reader holds a column edge. The
+ * host's handle writes its own tracks every frame and carries no mark of its
+ * own that reaches the body, so the skin hears the handle's pointer lifecycle
+ * and keeps one mark for the surfaces that wait for the release.
+ */
+export const SIDEBAR_DRAGGING_ATTRIBUTE = 'data-dsh-claude-sidebar-dragging'
+
+/**
+ * Whether a column edge is held right now: the skin's mark stands from the
+ * press to the release, and a feature that lays its own boxes out against a
+ * width the drag is still moving waits for the release's pass
+ * (features/bottom-panel-fit reads the same mark).
+ */
+export function sidebarDragging() {
+  return document.body.hasAttribute(SIDEBAR_DRAGGING_ATTRIBUTE)
+}
+
+/**
  * Project the attribute into the property the sheet's one `zoom` rule reads.
  *
  * The mirror calls this after writing the attribute (core/prefs.ts), and the

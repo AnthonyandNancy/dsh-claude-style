@@ -47,7 +47,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     onSessionCost: stats.onSessionCost,
     // The meter and the panel stand on the card; the numbers follow the session,
     // and the sidebar's own switch takes the feature down beside them.
-    wakesOn: ['content', 'composer', 'sidebar'],
+    wakesOn: ['content', 'composer', 'sidebar', 'sidebar-width'],
   }
 
   // The composer restyle hides the host's stat dialogs only while this

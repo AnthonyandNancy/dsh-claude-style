@@ -125,6 +125,7 @@
     { "id": "permissions.popover", "selector": ".dsh-claude-perm-popover", "feature": "permissions", "sees": "one permission control's tier card, which stays in the page and opens under its own trigger" },
     { "id": "permissions.auto-mode", "selector": "[data-preset=\"auto-mode\"]", "feature": "permissions", "sees": "the Auto mode row inside a tier card, which writes the preset to the session that card's composer shows" },
     { "id": "permissions.control", "attribute": "data-dsh-claude-control", "feature": "permissions", "sees": "the host control a skin feature replaces, named by that feature: the access trigger carries `access` while the permission control stands" },
+    { "id": "sidebar-drag.resizing", "attribute": "data-dsh-claude-sidebar-dragging", "feature": "shared", "sees": "the frame while the reader holds a column edge: its tracks, the sidebar box and the handle follow the pointer, and the skin’s width-dependent content measurements wait for the release" },
     { "id": "stylesheets.sheet", "attribute": "data-dsh-claude-sheet", "feature": "core", "sees": "the group each mounted part of the skin's stylesheet answers for" },
     { "id": "view-tabs.pill", "attribute": "data-dsh-claude-pill", "feature": "view-tabs", "sees": "the sliding highlight control inside the view-tab strip, marked where the shared pill measures its travel" }
   ]

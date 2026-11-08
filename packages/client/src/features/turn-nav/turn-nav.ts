@@ -9,6 +9,7 @@ import { buildElement, closestFrom } from '@dsh-claude-style/engine/dom'
 import { POPOVER_CLOSE_DELAY, closeOtherPopovers, createHoverIntent, registerPopover, unregisterPopover } from '../../shared/popover'
 import { inPageBox } from '../../shared/page-zoom'
 import { easeScrollFor, holdReader, scrollPositionFor, writeScroll } from '@dsh-claude-style/engine/scroll-owner'
+import { holdPopoverStylesheet, releasePopoverStylesheet } from '../../core/stylesheet'
 import { motionMs } from '../../shared/motion'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FeatureUi } from '../../core/feature'
@@ -95,6 +96,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let list: HTMLElement | null = null
   let rowItems: TurnItem[] | null = null
   let open = false
+  /** The opened card's own hold on the popover part, while it is up. */
+  let popoverHold: symbol | null = null
   /** Cancels the frame a coalesced refresh waits on. */
   let cancelRefreshFrame: (() => void) | null = null
   /** The turn the last key went to, and when. */
@@ -371,6 +374,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     renderRows(list!, drawnItems, chat)
     open = true
     mountedRail().setAttribute(TURN_NAV_OPEN_ATTR, '')
+    popoverHold = holdPopoverStylesheet()
     builtCard().setAttribute('data-open', 'true')
     placeCard()
   }
@@ -380,6 +384,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     if (!open) return
     open = false
     builtCard().setAttribute('data-open', 'false')
+    if (popoverHold !== null) releasePopoverStylesheet(popoverHold, motionMs('--dsh-claude-duration-exit'))
+    popoverHold = null
     if (rail !== null) {
       rail.removeAttribute(TURN_NAV_OPEN_ATTR)
       follow()
@@ -585,6 +591,11 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   return () => {
     stopped = true
     host.stop()
+    // A card torn down while open still holds the opened surface's part; the
+    // fade its close would have held it through is not coming.
+    if (popoverHold !== null) releasePopoverStylesheet(popoverHold)
+    popoverHold = null
+    open = false
     if (cancelRefreshFrame !== null) cancelRefreshFrame()
     cancelRefreshFrame = null
     unmountRail()

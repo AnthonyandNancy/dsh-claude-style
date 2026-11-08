@@ -2,6 +2,8 @@ import { AUTO_POPOVER_OFF } from '../../constants'
 import { findSidebarRoot } from '@dsh-claude-style/engine/host'
 import { getUsername } from '../../shared/identity'
 import { readPrefs } from '../../core/prefs'
+import { holdPopoverStylesheet, releasePopoverStylesheet } from '../../core/stylesheet'
+import { motionMs } from '../../shared/motion'
 import { POPOVER_CLOSE_DELAY, POPOVER_OPEN_DELAY, closeOtherPopovers, createHoverIntent, positionAnchoredPopover, removeStrayNodes } from '../../shared/popover'
 import type { createAccountRows } from './rows'
 
@@ -33,6 +35,8 @@ export function createAccountDrawer(options: {
   // would tear the popover down behind the overlay; a click-opened popover
   // instead stays until the pointer leaves the whole footer.
   let popoverOpenedByClick = false
+  /** The opened card's own hold on the popover part, while it is up. */
+  let popoverHold: symbol | null = null
 
   function isPopoverOpen() {
     return !!(accountPopover && accountPopover.getAttribute('data-open') === 'true')
@@ -40,6 +44,8 @@ export function createAccountDrawer(options: {
 
   function openPopover() {
     if (!accountPopover || !accountBtn) return
+    // A dwell and a press can both reach an open card; one card is one hold.
+    if (isPopoverOpen()) return
     cancelClosePopover()
     closeOtherPopovers('account')
     // Mirrors are frozen while the popover is open (footer-mirror.sync
@@ -50,6 +56,8 @@ export function createAccountDrawer(options: {
     // its stale coordinates for a frame.
     positionAccountPopover()
     accountPopover.setAttribute('data-open', 'true')
+    // The opened card's rules (its fill, rows, blur) arrive with the card.
+    popoverHold = holdPopoverStylesheet()
     accountBtn.setAttribute('data-open', 'true')
     accountBtn.setAttribute('aria-expanded', 'true')
   }
@@ -59,6 +67,10 @@ export function createAccountDrawer(options: {
     cancelClosePopover()
     popoverOpenedByClick = false
     accountPopover.setAttribute('data-open', 'false')
+    // Held through the closing fade, the same way every shared card is; the
+    // token means a reopen before that fade cancels this release.
+    if (popoverHold !== null) releasePopoverStylesheet(popoverHold, motionMs('--dsh-claude-duration-exit'))
+    popoverHold = null
     accountBtn.setAttribute('data-open', 'false')
     accountBtn.setAttribute('aria-expanded', 'false')
   }
@@ -212,6 +224,10 @@ export function createAccountDrawer(options: {
   /** Remove the self-built trigger and popover (the host path's shape). */
   function dropSynthetic() {
     cancelClosePopover()
+    // A drawer torn down while open still holds the opened surface's part; the
+    // fade it would have held it through is not coming.
+    if (popoverHold !== null) releasePopoverStylesheet(popoverHold)
+    popoverHold = null
     removeStrayNodes(document, '.dsh-claude-account-btn, .dsh-claude-account-popover', [])
     accountBtn = null
     accountPopover = null

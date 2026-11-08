@@ -210,6 +210,21 @@
       "name": "scrollPaceMinFrames",
       "value": 30,
       "reason": "The 4 s content scroll must carry at least thirty animation-frame samples. The baseline sample recorded 138 frames with a four-times CPU slowdown; a reading under this means the sampler stopped early rather than the page becoming cheaper."
+    },
+    {
+      "name": "sidebarDragMinFrames",
+      "value": 30,
+      "reason": "The drag phase must carry at least thirty animation-frame samples. The measured stand-in drag recorded ninety frames over ninety pointer positions; a reading under this means the drag sampler stopped early rather than the page becoming cheaper."
+    },
+    {
+      "name": "sidebarDragFrameP95Ms",
+      "value": 33,
+      "reason": "Two 60 Hz frame budgets. The stand-in drag with the skin's sheet on measured 33.3–33.4 ms p95 and 16.8–16.9 ms with the sheet off; the bound sits at the budget the fix must reach, and a real desktop reading that the host's own drag already exceeds is compared as an increment instead."
+    },
+    {
+      "name": "sidebarDragMaxOverBudgetFrames",
+      "value": 2,
+      "reason": "The measured stand-in drag with the sheet off left at most four frames over 33 ms out of ninety, the host's own reflow alone. Two leaves the host's own tail room while a skin-added reflow of seven to eleven frames trips it."
     }
   ]
 }

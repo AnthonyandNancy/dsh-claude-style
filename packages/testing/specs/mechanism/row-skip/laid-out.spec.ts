@@ -3,7 +3,8 @@
  * at its real size: it is marked the frame after the one that laid it out, so
  * the height it keeps while skipped is its own. A change of the column's width
  * takes every mark off, so every row is laid out again at the new width before
- * it may be skipped again.
+ * it may be skipped again, once the reader has released the edge that width
+ * belongs to.
  *
  * @capability row-skip
  * @features row-skip
@@ -13,6 +14,7 @@ import { expect, test } from 'vitest'
 import { CONVERSATION_SCROLL_SELECTOR, FLOW_KIND_ATTRIBUTE, ASSISTANT_STEP_KIND } from '@dsh-claude-style/contracts/dom'
 import { installRowSkip } from '@dsh-claude-style/client/pure'
 import { cleanupWith, frames } from '../../fixtures/teardown'
+import { SIDEBAR_DRAGGING_ATTRIBUTE } from '@dsh-claude-style/client/pure'
 import { attach } from '../../fixtures/host-markup'
 import { surfaceAttribute } from '../../fixtures/surface'
 
@@ -72,6 +74,27 @@ test('a change of the column\'s width lays every row out again before it is mark
   expect(marked(rows)).toBe(3)
   scroller.style.width = '480px'
   // The resize report lands with the next frame's layout; the marks come off with it.
+  await frames(2)
+  expect(marked(rows)).toBe(0)
+  await frames(3)
+  expect(marked(rows)).toBe(3)
+})
+
+test('a width the reader is still dragging lays no row out again', async () => {
+  const { scroller, rows } = conversation(3)
+  installed()
+  await frames(3)
+  expect(marked(rows)).toBe(3)
+  document.body.setAttribute(SIDEBAR_DRAGGING_ATTRIBUTE, '')
+  for (const width of ['560px', '520px', '480px']) {
+    scroller.style.width = width
+    await frames(3)
+    // The mark of every row stands while the edge is held: relaxing it per
+    // frame lays the whole transcript out again for a width the reader is
+    // choosing.
+    expect(marked(rows)).toBe(3)
+  }
+  document.body.removeAttribute(SIDEBAR_DRAGGING_ATTRIBUTE)
   await frames(2)
   expect(marked(rows)).toBe(0)
   await frames(3)

@@ -11,7 +11,7 @@ import type { AccountSurfaceMode } from './surface'
 import { createAccountDrawer } from './account-drawer'
 import { createFooterSeats } from './footer-seats'
 import { POPOVER_CLOSE_DELAY, POPOVER_OPEN_DELAY, closeOtherPopovers, createHoverIntent, pressKeepsPopoverOpen, registerPopover, unregisterPopover } from '../../shared/popover'
-import { inPageBox } from '../../shared/page-zoom'
+import { inPageBox, sidebarDragging } from '../../shared/page-zoom'
 import { resolveDisplayName } from '../../shared/identity'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { CloseReason, FeatureHandle } from '@dsh-claude-style/engine/scheduler'
@@ -391,6 +391,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     // The menu marker goes with the takeover: an open host menu must not
     // keep the skin's card styling after the footer is handed back.
     surface.clearMenu()
+    surface.teardown()
     // The copies stand inside the row the takeover draws, so they leave with it.
     seats.clear()
     const injected = document.querySelectorAll('.dsh-claude-account-inject')
@@ -422,7 +423,11 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * measuring it while writing, as it always did.
    */
   function measureAccountRow() {
+    // The row's box follows the sidebar's width, and a held edge rewrites that
+    // width every frame: the release's `sidebar-width` pass measures it once.
+    // The old reading is dropped, or the write phase would read the box here.
     rowBoxes = null
+    if (sidebarDragging()) return
     const footArea = findFootArea()
     if (footArea === null) return
     if (readPrefs().collapseFooter) mirror.measure(footArea)
@@ -491,6 +496,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    */
   function syncAccountRowBox(row: Element | null, footArea: Element) {
     if (row === null) return
+    // A held edge writes the row's width every frame; the release's own pass
+    // measures it once, and nothing here reads a box under the pointer.
+    if (sidebarDragging()) return
     const synthetic = surface.mode() === 'synthetic'
     const measured = rowBoxes !== null && rowBoxes.row === row
       ? rowBoxes
@@ -573,7 +581,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     // touches, so such a batch skips this pass (D40). The avatar follows the
     // account and the composer card the row sits above.
     skipOnContentOnly: true,
-    wakesOn: ['sidebar', 'composer'],
+    wakesOn: ['sidebar', 'sidebar-width', 'composer'],
     /**
      * The self-built drawer's dismiss routes: 'outside' (a press the footer
      * does not own), 'escape' and 'composer'. The shipped scheduler only

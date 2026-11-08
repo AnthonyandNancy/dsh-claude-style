@@ -1,6 +1,7 @@
 import { buildElement, closestFrom } from '@dsh-claude-style/engine/dom'
 import { createSlidingPill } from '../../shared/sliding-pill'
 import { VIEW_SWITCH_CLASS } from '../../shared/segment-control'
+import { sidebarDragging } from '../../shared/page-zoom'
 import { copy } from './copy'
 import type { CopyKey } from './copy'
 import type { SegmentView } from './view-store'
@@ -70,6 +71,7 @@ export function createSegmentControl(onSelect: (view: SegmentView) => void) {
         const on = id === view
         if (item.getAttribute('aria-checked') !== (on ? 'true' : 'false')) item.setAttribute('aria-checked', on ? 'true' : 'false')
       }
+      if (sidebarDragging()) return
       segmentPill.sync(control)
     },
     /**
@@ -78,6 +80,9 @@ export function createSegmentControl(onSelect: (view: SegmentView) => void) {
      * instead (sliding-pill).
      */
     measure() {
+      // A held sidebar edge moves this control every frame: the release's own
+      // `sidebar-width` pass reads it once, from the width the pointer left.
+      if (sidebarDragging()) return
       if (control !== null && control.parentElement !== null) segmentPill.measure(control)
     },
     /** Stand the control down: the highlight and the element leave with the section. */

@@ -1,4 +1,5 @@
 import { COMPOSER_SELECTOR, RIGHTBAR_COLUMN_SELECTOR } from '@dsh-claude-style/contracts/dom'
+import { SIDEBAR_DRAGGING_ATTRIBUTE } from '../../shared/page-zoom'
 import { observeMatches, subscribeMutations } from '@dsh-claude-style/engine/bus'
 import { cacheFirstMatch } from '@dsh-claude-style/engine/host'
 import { PAGE_ZOOM_ATTR } from '../../constants'
@@ -22,9 +23,6 @@ import { pageZoomFactor } from '../../shared/page-zoom'
 const BOTTOM_PANEL_SELECTOR = '[data-dsh-bottom-panel]'
 /** The left sidebar column, marked by the parts pass (engine/parts-table.ts). */
 const LEFT_COLUMN_SELECTOR = '[data-dsh-claude-part~="sidebar-column"]'
-/** Raised on the body by the plugin while a column is being dragged. */
-const SIDEBAR_DRAGGING_ATTRIBUTE = 'data-dsh-sidebar-dragging'
-
 /** Trim a computed page length to the shape a CSS declaration keeps. */
 function length(value: number) {
   return `${Math.round(value * 100) / 100}px`

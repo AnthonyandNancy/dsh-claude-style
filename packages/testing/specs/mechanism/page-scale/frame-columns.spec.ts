@@ -26,6 +26,8 @@ const FRAME_PART = 'layout-frame'
 const SIDEBAR_ROOT_PART = 'sidebar-root'
 /** The record this rule keeps on a frame it carried, read from the surface table. */
 const CARRY_ATTRIBUTE = surfaceAttribute('skin.frame-columns')
+/** The skin's own mark while a column edge is held. */
+const RESIZING_ATTRIBUTE = surfaceAttribute('sidebar-drag.resizing')
 
 afterEach(resetPage)
 
@@ -185,6 +187,29 @@ test('the sidebar\'s own box and its handle stand at the width of the column the
   expect(handle.style.left).toBe('224px')
 })
 
+test("a press on the sidebar edge raises the skin's mark, and the release drops it", async () => {
+  drawnAt(1.25)
+  const sidebar = hostSidebar('280px')
+  const handle = hostHandle('280px')
+  installed()
+  await settle()
+  handle.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7 }))
+  expect(document.body.hasAttribute(RESIZING_ATTRIBUTE)).toBe(true)
+  sidebar.style.width = '320px'
+  handle.style.left = '320px'
+  await settle()
+  // The page draws at 1.25: the host's 320 is 256 on screen. Keeping the host
+  // number through the drag draws the sidebar a quarter wider than the pointer
+  // and leaves the handle off its edge.
+  expect(sidebar.style.width).toBe('256px')
+  expect(handle.style.left).toBe('256px')
+  window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7 }))
+  await settle()
+  expect(document.body.hasAttribute(RESIZING_ATTRIBUTE)).toBe(false)
+  expect(sidebar.style.width).toBe('256px')
+  expect(handle.style.left).toBe('256px')
+})
+
 test('the host dragging the sidebar moves its box and its handle with the column', async () => {
   drawnAt(1.25)
   const sidebar = hostSidebar('280px')
@@ -199,6 +224,30 @@ test('the host dragging the sidebar moves its box and its handle with the column
   await settle()
   expect(sidebar.style.width).toBe('256px')
   expect(handle.style.left).toBe('256px')
+})
+
+test('a held sidebar edge carries every width the host writes, so the box follows the pointer', async () => {
+  drawnAt(1.25)
+  const sidebar = hostSidebar('280px')
+  const handle = hostHandle('280px')
+  installed()
+  await settle()
+  document.body.setAttribute(RESIZING_ATTRIBUTE, '')
+  sidebar.style.width = '320px'
+  handle.style.left = '320px'
+  await settle()
+  expect(sidebar.style.width).toBe('256px')
+  expect(handle.style.left).toBe('256px')
+  sidebar.style.width = '360px'
+  handle.style.left = '360px'
+  await settle()
+  await settle()
+  expect(sidebar.style.width).toBe('288px')
+  expect(handle.style.left).toBe('288px')
+  document.body.removeAttribute(RESIZING_ATTRIBUTE)
+  await settle()
+  expect(sidebar.style.width).toBe('288px')
+  expect(handle.style.left).toBe('288px')
 })
 
 test('a sidebar collapsed and opened again at the same width is carried again', async () => {

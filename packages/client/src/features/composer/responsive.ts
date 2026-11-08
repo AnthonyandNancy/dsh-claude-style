@@ -1,6 +1,7 @@
 import { COMPOSER_VARIANT_ATTRIBUTE, CONVERSATION_CONTENT_SELECTOR, CONVERSATION_MAIN_SLOT_SELECTOR, PHASE_ATTRIBUTE } from '@dsh-claude-style/contracts/dom'
 import { requestFrame } from '@dsh-claude-style/engine/frame'
 import { setAttributeIfChanged } from '@dsh-claude-style/engine/dom'
+import { sidebarDragging } from '../../shared/page-zoom'
 
 const TOOLBAR = 'data-dsh-claude-composer-toolbar'
 const LAYOUT = 'data-dsh-claude-composer-layout'
@@ -47,6 +48,10 @@ export function createComposerResponsive() {
   }
 
   function measure() {
+    // The card's width is the sidebar's width minus the centre column, and a
+    // held edge moves it every frame: the release's own `sidebar-width` pass
+    // reads it once. A queued reading already taken is dropped with it.
+    if (sidebarDragging()) return
     if (cancel !== null || rows.size === 0) return
     const readings: { card: HTMLElement; row: HTMLElement; layout: string; height: number }[] = []
     cancel = requestFrame({

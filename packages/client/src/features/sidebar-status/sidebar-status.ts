@@ -24,7 +24,10 @@ export function install(_ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       watchedRoot = root
       stopWatch = root === null ? null : subscribeMutations(root, {
         childList: true, characterData: true, subtree: true,
-        attributeFilter: [SESSION_PHASE_ATTRIBUTE, PART_ATTR, 'hidden', 'aria-hidden', 'contenteditable', 'style', 'class'],
+        // A width write is the host's own drag, and the pass reads boxes, not
+        // the style attribute (D40). The row's own structure, phase and class
+        // changes still arrive here.
+        attributeFilter: [SESSION_PHASE_ATTRIBUTE, PART_ATTR, 'hidden', 'aria-hidden', 'contenteditable', 'class'],
       }, schedule)
     }
     present = new Set(rows.all())

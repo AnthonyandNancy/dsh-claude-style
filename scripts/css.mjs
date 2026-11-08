@@ -69,6 +69,12 @@ const SCOPE = `${SCOPE_TAG}[${SCOPE_ATTRIBUTE}]`
 const SURFACE_SCOPE_ATTRIBUTE = 'data-dsh-claude-surface'
 /** The comment in a gated sheet below which every rule follows the composer preference. */
 const COMPOSER_GATE_MARKER = '@composer-gate'
+/**
+ * The comment in shared/popover.css above the rules that belong to an opened
+ * card. The hidden base before it stays in `base`: a closed card keeps the skin
+ * hidden without the opened surface's rules on the page.
+ */
+const POPOVER_OPEN_MARKER = '@popover-open'
 /** The region of docs/STYLE.md the motion table is written into. */
 const MOTION_BEGIN = '<!-- generated:motion (packages/client/src/theme/tokens.json) -->'
 const MOTION_END = '<!-- /generated:motion -->'
@@ -511,6 +517,27 @@ function checkHolds(relations) {
 }
 
 /**
+ * One sheet's text before and after one comment marker, in source order. The
+ * marker itself belongs to neither half.
+ *
+ * @param text - the processed sheet, whose comments and offsets PostCSS holds.
+ * @param marker - the comment's own text, without its delimiters.
+ * @param label - the sheet's name, for a refusal that names it.
+ * @returns `{ before, after }`, trimmed.
+ */
+function splitAtComment(text, marker, label) {
+  const root = postcss.parse(text, { from: label })
+  const found = root.nodes.find((node) => node.type === 'comment' && node.text === marker)
+  if (found === undefined) throw new Error(`build: ${label} is missing the /* ${marker} */ marker`)
+  const end = found.source === undefined || found.source.end === undefined ? undefined : found.source.end.offset
+  if (end === undefined) throw new Error(`build: ${label}'s /* ${marker} */ marker carries no source position`)
+  return {
+    before: text.slice(0, found.source.start.offset).trim(),
+    after: text.slice(end).trim(),
+  }
+}
+
+/**
  * Every sheet in cascade order, checked, gated and joined.
  *
  * @param options.sheets - `{ file, rank, gate?, scope? }` or `{ generated, rank }` in cascade order (TOKEN_SHEET generated).
@@ -541,7 +568,13 @@ export function buildStylesheet({ sheets, srcDir, sources, tokenDoc, gates, imag
   const joined = (surface) => processed.filter((item) => (item.sheet.scope === 'surface') === surface).map((item) => item.text).join('\n\n')
   const slices = processed
     .filter((item) => item.sheet.scope !== 'surface')
-    .map((item) => ({ group: item.sheet.file === 'shared/popover.css' ? 'base' : styleGroupOf(item.sheet), text: item.text }))
+    .flatMap((item) => {
+      // One file, two mount points: the hidden base stays on every page, and
+      // the opened card's own look arrives with the card (D9).
+      if (item.sheet.file !== 'shared/popover.css') return [{ group: styleGroupOf(item.sheet), text: item.text }]
+      const split = splitAtComment(item.text, POPOVER_OPEN_MARKER, 'shared/popover.css')
+      return [{ group: 'base', text: split.before }, { group: 'popover', text: split.after }]
+    })
   for (const name of names.claude) {
     if (!names.host.has(name)) throw new Error(`build: ${name} is defined under the Claude palette or typeface but has no alias under the host's`)
   }

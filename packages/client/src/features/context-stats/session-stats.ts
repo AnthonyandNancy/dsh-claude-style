@@ -2,6 +2,7 @@ import { conversationSessionId, findConversationSession, hostSessions } from '@d
 import { hostChatSeat } from '../../core/i18n'
 import { prefsFromForm, readPrefs } from '../../core/prefs'
 import { peerPresent } from '../../shared/peer-plugin'
+import { sidebarDragging } from '../../shared/page-zoom'
 import { BILLING_OFF, CONTEXT_DISPLAY_PIE, CONTEXT_DISPLAY_RING_BAND, STATS_POSITION_FOOTER, STATS_POSITION_INLINE } from '../../constants'
 import { createContextStatsBinding } from './stats-binding'
 import { createInlineStats } from './inline-stats'
@@ -466,6 +467,14 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
      * them a second time (D40).
      */
     measure() {
+      // The meter and the line are laid out across the composer's width: a held
+      // sidebar edge moves that width every frame, and the release's own pass
+      // reads it once. The old reading is dropped so the write phase does not
+      // measure the moved box here.
+      passMeters = []
+      passPanel = null
+      pieColours = null
+      if (sidebarDragging()) return
       passMeters = contextMeters()
       for (let i = 0; i < passMeters.length; i += 1) markContextMeter(passMeters[i])
       passPanel = contextPanel()

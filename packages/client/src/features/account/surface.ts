@@ -1,5 +1,6 @@
 import { requestFrame } from '@dsh-claude-style/engine/frame'
 import { ACCOUNT_MENU_ATTR, ACCOUNT_READY_ATTR } from '../../constants'
+import { holdPopoverStylesheet, releasePopoverStylesheet } from '../../core/stylesheet'
 import { createStamp } from '@dsh-claude-style/engine/dom'
 
 /** Where the skin's account rows live: the host's own account menu, or the skin's self-built popover. */
@@ -36,6 +37,8 @@ export function createAccountSurface(options: {
   let hostContainer: HTMLElement | null = null
   /** The open account menu, marked for the stylesheet. */
   const menuStamp = createStamp(ACCOUNT_MENU_ATTR)
+  /** This surface's own hold on the opened surface, while its menu stands. */
+  let held: symbol | null = null
 
   function detect(): AccountSurfaceMode {
     return options.hostTrigger() !== null ? 'host' : 'synthetic'
@@ -55,6 +58,14 @@ export function createAccountSurface(options: {
   function markMenu(menu: HTMLElement | null) {
     if (menuStamp.current() === menu) return
     menuStamp.mark(menu)
+    // The host menu wears the opened card's look like the skin's own cards do.
+    // It is mounted for the length of the opening, so the part follows the
+    // stamp rather than a fade of its own.
+    if (menu !== null && held === null) held = holdPopoverStylesheet()
+    else if (menu === null && held !== null) {
+      releasePopoverStylesheet(held)
+      held = null
+    }
     if (options.onMenu) options.onMenu(menu)
   }
 
@@ -129,6 +140,12 @@ export function createAccountSurface(options: {
     mode() { return mode },
     container,
     clearMenu() { markMenu(null) },
+    /** The generation is ending: a part held for the menu leaves with it. */
+    teardown() {
+      if (held === null) return
+      releasePopoverStylesheet(held)
+      held = null
+    },
     sync
   }
 }

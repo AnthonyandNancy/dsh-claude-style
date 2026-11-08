@@ -43,6 +43,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   let unsubscribe: (() => void) | null = null
 
   function close() {
+    // The card was opened through the shared path, so its own close has to
+    // release the opened surface's hold; removing the node alone keeps the
+    // part on the page for the rest of the generation.
+    if (card !== null) setMenuPopoverOpen(card, false)
     if (card !== null && card.parentElement) card.parentElement.removeChild(card)
     if (anchor !== null) anchor.setAttribute('aria-expanded', 'false')
     card = null

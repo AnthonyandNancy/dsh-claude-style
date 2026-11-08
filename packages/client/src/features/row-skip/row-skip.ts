@@ -2,6 +2,7 @@ import { FLOW_KIND_ATTRIBUTE } from '@dsh-claude-style/contracts/dom'
 import { observeMatches, observeSize, subscribeMutations } from '@dsh-claude-style/engine/bus'
 import { conversationScroller } from '@dsh-claude-style/engine/chat-dom'
 import { requestFrame } from '@dsh-claude-style/engine/frame'
+import { SIDEBAR_DRAGGING_ATTRIBUTE, sidebarDragging } from '../../shared/page-zoom'
 
 /**
  * Which of the conversation's rows the stylesheet may skip (row-skip.css).
@@ -103,9 +104,20 @@ export function install() {
       const inline = size !== undefined && size.length > 0 ? size[0].inlineSize : entries[entries.length - 1].contentRect.width
       const previous = width
       width = inline
-      if (previous !== 0 && Math.abs(inline - previous) >= 0.5) relayAll()
+      if (previous === 0 || Math.abs(inline - previous) < 0.5) return
+      // The column narrows with the sidebar. A width the pointer is still
+      // moving would lay the whole transcript out again on every frame of the
+      // gesture; the release's own report lays it out once at the width the
+      // pointer left.
+      if (sidebarDragging()) return
+      relayAll()
     })
   }
+
+  /** A held edge that moved the column: lay every row out again as it releases. */
+  const stopDrag = subscribeMutations(document.body, { attributes: true, attributeFilter: [SIDEBAR_DRAGGING_ATTRIBUTE] }, () => {
+    if (!sidebarDragging() && width !== 0) relayAll()
+  })
 
   /** The rows that arrived without the mark wait for their first layout. */
   const collect = () => {
@@ -121,6 +133,7 @@ export function install() {
 
   return () => {
     stopHidden()
+    stopDrag()
     if (stopWidth !== null) stopWidth()
     if (cancelFrame !== null) cancelFrame()
     for (const row of rows.all()) row.removeAttribute(LAID_OUT_ATTR)

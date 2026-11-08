@@ -96,6 +96,8 @@ dsh plugin --profile web add Nwflower/dsh-claude-style#dist      # GitHub 发布
 | [性能方案](docs/PERFORMANCE.md) | 长会话与流式输出下的开销来源、改法与验收读数 |
 | [滚动卡顿方案](docs/SCROLL-PERFORMANCE.md) | 滚动掉帧的测量证据、根因、整改方案与验收读数 |
 | [滚动整改计划](docs/SCROLL-PERFORMANCE-PLAN.md) | 滚动整改的任务顺序、失败测试、实现代码、验证命令与提交边界 |
+| [侧栏拖动与会话滚动卡顿方案](docs/SIDEBAR-SCROLL-PERFORMANCE.md) | 两项卡顿的测量证据、根因、解决方案与验收读数 |
+| [侧栏拖动与会话滚动整改计划](docs/SIDEBAR-SCROLL-PERFORMANCE-PLAN.md) | 整改的任务顺序、失败测试、实现代码、验证命令与提交边界 |
 | [修改计划](docs/PERFORMANCE-PLAN.md) | 按提案拆分的任务、失败测试、验证命令与提交边界 |
 | [架构决策](docs/adr/README.md) | 每条方向一页：背景、决定、后果与重审条件 |
 | [更新日志](docs/CHANGELOG.md) | 版本历史 |

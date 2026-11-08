@@ -1,5 +1,6 @@
 import { installScheduler as installEngineScheduler } from '@dsh-claude-style/engine/scheduler'
 import type { FeatureHandle, SchedulerCalls } from '@dsh-claude-style/engine/scheduler'
+import { observeSidebarWidth } from '@dsh-claude-style/engine/host'
 import { onHdslLoaded, onUsernameLoaded } from '../shared/identity'
 import { onModelCopyLoaded } from '../features/model/model-copy'
 import { recordPassReading } from './frame-metrics'
@@ -91,6 +92,7 @@ export function installScheduler(ctx: HostContext, ui: Ui, features: HandleName[
     pageVisibility: listener => subscribePageHidden(() => listener()),
     start: loadPrefs,
     systemMotionChanged: refreshMotionAttribute,
+    observeSidebarWidth,
     reportPass: recordPassReading,
   })
 }
