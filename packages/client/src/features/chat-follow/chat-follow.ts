@@ -9,7 +9,7 @@ import { createStamp } from '@dsh-claude-style/engine/dom'
 import { motionEase, motionEaseAt, motionMs } from '../../shared/motion'
 import { inPageBox, pageViewport } from '../../shared/page-zoom'
 import { observeComposerCards } from '@dsh-claude-style/engine/host'
-import { SCROLL_EASE_LEAD_PX, handBackFollow, joinScrollOwner, readerHolds, submissionHolds, writeScroll } from '@dsh-claude-style/engine/scroll-owner'
+import { SCROLL_EASE_LEAD_PX, handBackFollow, joinScrollOwner, readerHolds, readerScrollPosition, submissionHolds, writeScroll } from '@dsh-claude-style/engine/scroll-owner'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FeatureUi } from '../../core/feature'
 import type manifest from './chat-follow.manifest'
@@ -105,7 +105,7 @@ function placeFollowTail(stamp: ReturnType<typeof createStamp<HTMLElement>>, car
 /**
  * Watch the whole page for the moments that lose the host's follow, and hand
  * the position back at each of them; while content streams, slide what the
- * host's pin pushed up instead of letting it jump in one frame (D71). Every
+ * host's pin pushed up instead of letting it jump in one frame (D85). Every
  * position write goes through the scroll owner (D40).
  *
  * @param options.foldBusy - whether a fold glide is animating a height right now.
@@ -145,7 +145,7 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
    */
   const running = () => streaming() || performance.now() - lastActivityAt <= FOLLOW_ACTIVITY_GRACE_MS
 
-  // ---------- the stream slide (D71) ----------
+  // ---------- the stream slide (D85) ----------
   //
   // While work is streaming and the reader is at the end, the host follows by
   // writing the end outright the moment content grows, so the text above the
@@ -167,6 +167,9 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
   let heldColumn: HTMLElement | null = null
   /** Whether the size subscription's first report for the current column has been taken as its baseline. */
   let slideArmed = false
+  /** When the last growth arrived, and the smoothed gap before it: the pace a slide is timed to (D85). */
+  let grewAt = 0
+  let grewEvery = 0
   /**
    * The live turn's own row, kept current by the bus (D40): the stream slide
    * counter-slides it so it stands while the column glides. The host draws the
@@ -229,25 +232,42 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
     if (linear >= 1) return 0
     // The curve the animation paints with, not the linear share of its
     // duration: with the two mixed up, every restart re-inflates the distance
-    // the frame before it had already travelled (D71).
+    // the frame before it had already travelled (D85).
     return slide.from * (1 - motionEaseAt(GLIDE_TOKEN, linear))
+  }
+
+  /**
+   * How long this slide may run (D85). A piece of an answer arriving at a
+   * provider's pace lands well inside the slide token, and a slide still moving
+   * when the next piece lands starts its restart from a distance it had not paid
+   * back yet: the column is drawn further below the tail with every piece until
+   * it stands at the longest stretch a slide carries. The gap the last two
+   * pieces kept is the time this one has before the next, so the slide is timed
+   * to that; the token stays the ceiling for an answer slow enough for the
+   * glide to settle between pieces.
+   */
+  const slideDuration = () => {
+    const longest = motionMs('--dsh-claude-duration-slide')
+    if (grewEvery === 0) return longest
+    return Math.min(longest, Math.max(grewEvery, 1))
   }
 
   /**
    * Put the column back down by this frame's growth and slide it to rest.
    *
    * One replace-mode animation at a time: an additive one stays off the
-   * compositor (D71), so a new growth restarts from the distance still
-   * carried — up to the longest stretch a slide carries, so a burst is glided
-   * as far as that and no farther. The live turn's row is pinned to the
-   * scroller's bottom (chat-wait.css) and would ride the column's offset, so it
-   * gets the same slide reversed, started in the same frame: the two cancel and
-   * it stands.
+   * compositor (D85), so a new growth restarts from the distance still carried
+   * — up to the longest stretch a slide carries, so a burst is glided as far as
+   * that and no farther. Its length follows the pace the pieces arrive at, so
+   * the distance carried never outgrows one piece. The live turn's row is pinned
+   * to the scroller's bottom (chat-wait.css) and would ride the column's offset,
+   * so it gets the same slide reversed, started in the same frame: the two
+   * cancel and it stands.
    */
   const startSlide = (column: HTMLElement, grew: number) => {
     const from = Math.min(SCROLL_EASE_LEAD_PX, slideCarried() + grew)
     stopSlide()
-    const duration = motionMs('--dsh-claude-duration-slide')
+    const duration = slideDuration()
     const timing = { duration, easing: motionEase(GLIDE_TOKEN) }
     const columnSlide = column.animate([{ transform: `translateY(${from}px)` }, { transform: 'translateY(0px)' }], timing)
     // The live turn's row, from the bus's list and this column's own: the host's
@@ -313,6 +333,10 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
     slideArmed = false
     slideHeight = 0
     scrollerHeight = 0
+    // A new column is a new conversation: the pace the old one streamed at is
+    // no reading of how fast this one's pieces arrive (D85).
+    grewAt = 0
+    grewEvery = 0
     if (column === null) return
     const scroller = column.closest(CONVERSATION_SCROLL_SELECTOR)
     stopSlideSize = observeSize(scroller === null ? [column] : [column, scroller], onSlideResize, { afterHost: true })
@@ -348,12 +372,14 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
    * refused while he holds, so this is the one writer left for it. A position
    * away from the end is the reader's own and stays where he put it.
    */
-  const holdGrowth = (column: HTMLElement, grew: number) => {
+  const holdGrowth = (column: HTMLElement) => {
     const scroller = column.closest(CONVERSATION_SCROLL_SELECTOR)
     if (scroller === null || column.closest(FOLLOWING_TAIL_SELECTOR) === null) return
     if (scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop > 0.5) return
     if (foldBusy()) return
-    writeScroll(scroller, scroller.scrollTop - grew, 'reader')
+    // The host has already written the new tail. Restore the position the
+    // reader chose, which is the old tail only for a touch held there (#230).
+    writeScroll(scroller, readerScrollPosition(scroller)!, 'reader')
   }
 
   /**
@@ -382,17 +408,31 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
       before = slideHeight
       const delta = box - slideHeight
       slideHeight = box
+      // A structural shrink moves the host's pin by the height that left. An
+      // offset from growth before it would add a second, downward move.
+      if (delta < 0) stopSlide()
       // Any growth is slid, a burst included: startSlide's clamp bounds what a
       // glide carries, and a column the host replaced is no longer the one
       // watched here (slideSync re-subscribes when it changes).
-      if (delta > 0) grew = delta
+      if (delta > 0) {
+        grew = delta
+        // A faster arrival bounds this slide at once; smoothing a shorter gap
+        // would carry the old pause into the new stream and let offsets build
+        // up. Slower arrivals still ease toward their own pace (D85).
+        const now = performance.now()
+        if (grewAt > 0) {
+          const gap = now - grewAt
+          grewEvery = grewEvery === 0 ? gap : Math.min(gap, grewEvery * 0.6 + gap * 0.4)
+        }
+        grewAt = now
+      }
     }
     holdCheck()
     // Only a column that already overflowed had its end pinned by the whole
     // growth; a first screen filling up moves nothing above it.
     if (column === null || grew === 0 || before < scrollerHeight) return
     if (readerAway()) {
-      holdGrowth(column, grew)
+      holdGrowth(column)
       return
     }
     if (slideWanted(column)) startSlide(column, grew)
@@ -481,6 +521,9 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
           && record.target.getAttribute(ROW_PHASE_ATTRIBUTE) !== RUNNING_STATE) {
           lastActivityAt = performance.now()
           structureSeen = true
+          // The row may shrink in this same batch. End its growth offset before
+          // that structural change paints; the resize subscription is the backup.
+          stopSlide()
         }
         continue
       }
@@ -488,6 +531,15 @@ export function createChatFollowGuard(options: { foldBusy: () => boolean, submis
         if (!marksStructure(node)) continue
         lastActivityAt = performance.now()
         structureSeen = true
+      }
+      for (const node of record.removedNodes) {
+        if (!(node instanceof Element)) continue
+        if (node.matches(CHAT_RUNNING_SELECTOR) || node.querySelector(CHAT_RUNNING_SELECTOR) !== null) {
+          // The live row leaving is the stream's structural boundary. Its last
+          // growth offset ends in this mutation batch, ahead of the next paint.
+          stopSlide()
+          break
+        }
       }
     }
     if (structureSeen || guardSeen) queue()

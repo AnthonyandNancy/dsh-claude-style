@@ -48,7 +48,7 @@ const GROUP_BACKUP_KEY = 'dsh-claude-group-before-date-view'
 const WEEKDAY_LIMIT = 7
 /**
  * 切换视图的事件名：铃铛按下时派发，本特性接住它，在「宿主的按工作区」与
- * 「我们的按日期」之间来回切。日期视图是默认的那一档，铃铛只是临时换回去。
+ * 「我们的按日期」之间来回切。日期视图默认关着，而且这次选择不跨刷新保留。
  */
 export const DATE_VIEW_TOGGLE_EVENT = 'dsh-claude-toggle-date-view'
 
@@ -143,6 +143,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   const mine = new Set<HTMLElement>()
   /** 我们把宿主的视图 store 切成扁平之前的分组，卸载时还回去。 */
   let previousGroup: HostSessionGroupBy | null = null
+  /** 扁平这一档是我们写进去的：store 里再读到别的值，就是读者的选择。 */
+  let flattening = false
   /** 日期视图开着吗：默认开着，读者按下铃铛才换回宿主的分组。 */
   let dateMode = false
   let disposed = false
@@ -185,16 +187,31 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * 工作区分组里每一段各是一张列表，日期要跨工作区，只能落在一张列表上；铃铛
    * 换回宿主视图时把这档还回去。分组记在 previousGroup 里，应用被意外关掉时由
    * localStorage 里那份接着记。
+   *
+   * 扁平是我们的写入。压平之后再读到的分组只要是别人的，就说明读者在宿主的视图
+   * 菜单里改了分组：日期视图让开，把他选的这一档留在 store 里（#267）。
+   * @returns 日期视图让开了没有：让开的那一遍不能接着排版，否则 disable() 收走的
+   * 段落标题与行内标签会被这一遍重新插回一个已经没有模式标记的页面。
    */
-  function flatten() {
+  function flatten(): boolean {
     const store = viewNow()
-    if (store === null || store === undefined) return
-    if (typeof store.getSnapshot !== 'function' || typeof store.actions?.setGroupBy !== 'function') return
+    if (store === null || store === undefined) return false
+    if (typeof store.getSnapshot !== 'function' || typeof store.actions?.setGroupBy !== 'function') return false
     const group = store.getSnapshot().groupBy
-    if (group === 'flat') return
+    if (group === 'flat') {
+      flattening = true
+      return false
+    }
+    if (flattening) {
+      // disable 拿到这一档：让开的时候不能拿 previousGroup 那份盖掉读者刚选的。
+      disable(group)
+      return true
+    }
     previousGroup = group
     rememberGroup(group)
+    flattening = true
     store.actions.setGroupBy('flat')
+    return false
   }
 
   /** 工作区标签：插在行内按钮前面，太长由样式表省略。 */
@@ -291,7 +308,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
       return
     }
     document.body.removeAttribute(ARCHIVED_ATTRIBUTE)
-    flatten()
+    // 让开的那一遍到此为止：disable() 已经收走标题与标签，接着排下去会把它们
+    // 插回一个没有模式标记的页面，而这些节点只有日期视图的样式表认。
+    if (flatten()) return
     const { titles, ready } = workspacesById()
     const times = timesById()
     const today = startOfDay(Date.now())
@@ -358,19 +377,22 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
 
   /**
    * 打开日期视图：切扁平、重排、加标签，标记落到 body 上供样式表和铃铛读。
-   * 排版的活留给下一帧：安装时同步读宿主的会话列表，一旦那份服务有问题，安装
-   * 会整个抛出去，收尾函数都没能交回来，body 上的标记就留在页面上了。
+   * 排版的活留给下一帧：按下铃铛的那一刻宿主可能正在重画列表，等这一帧画完再读。
    */
   function enable() {
     if (dateMode || disposed) return
     dateMode = true
+    flattening = false
     document.body.setAttribute(MODE_ATTRIBUTE, '')
     followLists()
     schedule()
   }
 
-  /** 关掉日期视图：还回宿主的分组，收走我们写过的每一个像素。 */
-  function disable() {
+  /**
+   * 关掉日期视图：还回宿主的分组，收走我们写过的每一个像素。
+   * 读出 keep 时它已经在 store 里：还的是读者刚选的那一档，不是压平之前记下的（#267）。
+   */
+  function disable(keep?: HostSessionGroupBy) {
     if (!dateMode) return
     document.body.removeAttribute(ARCHIVED_ATTRIBUTE)
     dateMode = false
@@ -381,9 +403,10 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     restoreSeats()
     // 分组还成读者原来的那一档（工作区 / 工作区树 / 扁平都照原样）。
     const store = viewNow()
-    const restore = previousGroup ?? rememberedGroup()
+    const restore = keep ?? previousGroup ?? rememberedGroup()
     if (restore !== null && typeof store?.actions?.setGroupBy === 'function') store.actions.setGroupBy(restore)
     previousGroup = null
+    flattening = false
     forgetGroup()
   }
 
@@ -481,8 +504,8 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   // can move a section.
   ui.dateGroups = { sync: arrange, skipOnContentOnly: true, wakesOn: ['sidebar'], teardown }
 
-  // 日期视图是默认的那一档：装上就排成日期段落，读者按下铃铛才换回宿主的视图。
-  enable()
+  // 日期视图默认关着：装上只把上一次留下的扁平还回读者原来的分组，按下铃铛才排成日期段落。
+  schedule()
   document.addEventListener(DATE_VIEW_TOGGLE_EVENT, onToggle)
   // 页面关掉时还在日期视图里：先把分组还回去，别把扁平留在宿主的存储里。
   globalThis.addEventListener('pagehide', onPageHide)

@@ -18,34 +18,13 @@
   font-display: swap;
 }
 
-/* The Anthropic faces are not in the npm package, so these registrations resolve
-   only when the user dropped the files into `$DSH_HOME/dsh-claude-style/fonts/`;
-   otherwise the stacks fall back to a system-installed copy. All three are static
-   Regular cuts, so one 400 declaration covers them and the browser synthesizes
-   the heavier weights. */
-@font-face {
-  font-family: 'Anthropic Sans Web Text';
-  src: url('/dsh-claude-style/fonts/AnthropicSansWebText.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Anthropic Serif Web Text';
-  src: url('/dsh-claude-style/fonts/AnthropicSerifWebText.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Anthropic Mono Web';
-  src: url('/dsh-claude-style/fonts/AnthropicMonoWeb.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/* The three Anthropic faces are not in the npm package, so none is declared here:
+   a @font-face whose file is absent is fetched on every load and answers 404. The
+   browser half registers the ones the reader's drop point holds at runtime
+   (packages/client/src/shared/webfonts.ts), and a copy installed on the system
+   resolves through the stacks below, no @font-face shadowing its name. All three
+   are static Regular cuts, so one 400 declaration covers each and the browser
+   synthesizes the heavier weights. */
 
 /* The look-alikes the stacks name after the Anthropic faces, for an install with
    neither the files nor a system copy. They ship in the package (SIL OFL 1.1), cut
@@ -65,6 +44,17 @@
   font-family: 'Claude Style Noto Serif';
   src: url('/dsh-claude-style/fonts/NotoSerifVariable.woff2') format('woff2');
   font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The mascot bubble's pixel face: PoxiaoPixel (SIL OFL 1.1) cut to the bubble's
+   figures and labels by scripts/pixel-font.py, so a glyph outside that set falls
+   through to the next face in the bubble's stack. */
+@font-face {
+  font-family: 'Claude Style Pixel';
+  src: url('/dsh-claude-style/fonts/ClaudeStylePixel.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -122,6 +112,7 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] h1 { font: var(--
 body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] h2 { font: var(--dsw-font-markdown-h2); font-family: var(--dsh-claude-font-prose); }
 body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] h3 { font: var(--dsw-font-markdown-h3); font-family: var(--dsh-claude-font-prose); }
 body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] h4 { font: var(--dsw-font-markdown-h4); font-family: var(--dsh-claude-font-prose); }
+body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] :is(h5, h6) { font-family: var(--dsh-claude-font-prose); }
 
 body[data-dsh-claude-style] [data-dsh-claude-part~="markdown"] :is(th, td) {
   font-family: var(--dsh-claude-font-prose);

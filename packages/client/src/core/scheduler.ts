@@ -11,6 +11,7 @@ import type { BanHandle } from '../features/ban-screen/ban-screen'
 import type { ChatFoldHandle } from '../features/chat-fold/chat-fold'
 import type { ComposerHandle } from '../features/composer/composer'
 import type { ChatSendHandle } from '../features/chat-send/send-flight'
+import type { ContextStatsHandle } from '../features/context-stats/context-stats'
 import type { MeterRingHandle } from '../features/context-stats/meter-ring'
 import type { ModelHandle } from '../features/model/model-picker'
 import type { PeakRateHandle } from '../features/peakrate/peakrate'
@@ -29,7 +30,7 @@ export interface Handles {
   homeRipple: FeatureHandle
   mascot: FeatureHandle
   permissions: FeatureHandle
-  contextStats: FeatureHandle
+  contextStats: ContextStatsHandle
   meterRing: MeterRingHandle
   model: ModelHandle
   peakrate: PeakRateHandle
@@ -69,6 +70,7 @@ export interface Handles {
   activeFirst: FeatureHandle
   activeShelf: FeatureHandle
   dateGroups: FeatureHandle
+  widthHandle: FeatureHandle
 }
 
 export type HandleName = keyof Handles

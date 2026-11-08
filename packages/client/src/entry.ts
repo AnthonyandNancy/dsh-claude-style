@@ -5,6 +5,7 @@ import { adoptSkin } from '@dsh-claude-style/engine/skin'
 import { motionReduced } from './core/prefs'
 import { setHostContext } from './core/host-context'
 import { loadHdsl, loadUsername } from './shared/identity'
+import { installWebfonts } from './shared/webfonts'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import { loadModelCopy } from './features/model/model-copy'
 import { installExternalControls } from './core/external-controls'
@@ -93,6 +94,8 @@ export function apply(ctx: HostContext) {
   let offOwnerWatch: (() => void) | null = null
   /** Unmounts this generation's stylesheet; set once the sheet is mounted. */
   let stopStylesheet: (() => void) | null = null
+  /** Unmounts the sheet registering the optional webfonts in place; set with that sheet. */
+  let stopWebfonts: (() => void) | null = null
   /** Mirrors the page's visibility onto the document; set with the sheet that reads it. */
   let stopVisibility: (() => void) | null = null
   /** Carries the host's floating layer in a page drawn at a scale; set with the sheet that scales it. */
@@ -147,6 +150,10 @@ export function apply(ctx: HostContext) {
     if (stopStylesheet !== null) {
       stopStylesheet()
       stopStylesheet = null
+    }
+    if (stopWebfonts !== null) {
+      stopWebfonts()
+      stopWebfonts = null
     }
     // Last: the part marks name host elements for the sheet, and the features
     // above may have stamped a menu card the pass had marked (D3).
@@ -367,6 +374,9 @@ export function apply(ctx: HostContext) {
       stopStylesheet = mountStylesheet()
       syncStylesheetGroups()
     }
+    // The faces the reader supplied are declared apart from the sheet, once the
+    // host half says which ones the drop point holds (shared/webfonts.ts).
+    if (stopWebfonts === null) stopWebfonts = installWebfonts()
     // The page's visibility, mirrored for the sheet just mounted and for the
     // clocks in script that stop with it (core/page-visibility.ts).
     if (stopVisibility === null) stopVisibility = installPageVisibility()

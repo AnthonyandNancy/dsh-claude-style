@@ -21,6 +21,12 @@ export { PACKAGE_NAME }
 export const STYLE_ID = 'dsh-claude-style-style'
 /** The surface sheets' own element, which stays while ds-bot's surface has the page (D74). */
 export const SURFACE_STYLE_ID = 'dsh-claude-style-surface'
+/**
+ * The sheet that registers the optional webfonts the drop point holds
+ * (shared/webfonts.ts): the three Anthropic faces are declared there and
+ * nowhere else, so an install without them sends no font request at all.
+ */
+export const WEBFONTS_STYLE_ID = 'dsh-claude-style-webfonts'
 
 /**
  * Settings identity.
@@ -44,6 +50,8 @@ export const SETTINGS_ENTRY_FALLBACK = 'ui-skin-claude-style'
 export const STYLE_PLUGIN_CSS = `${PACKAGE_NAME}/client.css`
 /** The surface sheets' key in the same bookkeeping. */
 export const SURFACE_PLUGIN_CSS = `${PACKAGE_NAME}/surface.css`
+/** The optional webfonts sheet's key in the same bookkeeping. */
+export const WEBFONTS_PLUGIN_CSS = `${PACKAGE_NAME}/webfonts.css`
 /**
  * The tag this package gives a sibling's untagged stylesheet so the host's
  * claim sweep cannot attribute it to this package (D9). It carries a slash,
@@ -202,6 +210,9 @@ export const PAGE_ZOOM_ATTR = 'data-dsh-claude-page-zoom'
 
 /** 缩放倍率走的自定义属性：任何数字都成立，chrome.css 的 `zoom` 读它。 */
 export const PAGE_ZOOM_VAR = '--dsh-claude-page-zoom-factor'
+/** Ordinary interface text's percentage and its scale, independent of the page's scale. */
+export const INTERFACE_FONT_SIZE_ATTR = 'data-dsh-claude-interface-font-size'
+export const INTERFACE_FONT_SIZE_VAR = '--dsh-claude-interface-font-scale'
 /**
  * Present while the page's own width — the window's over the page zoom — is at
  * or under the width each one names (shared/page-scale.ts). A stylesheet reads
@@ -496,6 +507,7 @@ export {
   BRAND_MARK_PATH as BRAND_MARK_ROUTE,
   BRAND_PATH as BRAND_ROUTE,
   BRAND_WORDMARK_PATH as BRAND_WORDMARK_ROUTE,
+  FONT_FILES_PATH as FONT_FILES_ROUTE,
   HDSL_PATH as HDSL_ROUTE,
   HDSL_SKIN_PATH as HDSL_SKIN_ROUTE,
   PEAKRATE_PATH as PEAKRATE_ROUTE,
@@ -503,6 +515,7 @@ export {
   SESSION_SEARCH_PATH as SESSION_SEARCH_ROUTE,
   USAGE_PATH as USAGE_ROUTE,
   USERNAME_PATH as USERNAME_ROUTE,
+  WEBFONTS_PATH as WEBFONTS_ROUTE,
 } from '@dsh-claude-style/contracts/routes'
 
 /** Placement state for the sidebar's native status cell; the host remains its state owner. */

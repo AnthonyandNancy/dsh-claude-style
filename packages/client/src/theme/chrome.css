@@ -159,8 +159,11 @@ html:has(body[data-dsh-claude-style][data-dsh-claude-page-zoom]) {
    is rather than by the attribute beside the role. A full-window layer is not a
    dialog card: dsh-video-skin's boot animation measures the window itself and
    must keep the whole window at any scale (packages/contracts/src/table.ts,
-   issue #205), so the cap steps aside for it. */
-body[data-dsh-claude-style] :is(dialog, [role="dialog"]):not(.dsvs-boot) {
+   issue #205), and the image preview's backdrop is the dialog the reader faces
+   while its own mask paints the dim fill (issue #278), so the cap steps aside
+   for both. Full-window host overlays also keep their own edges; only the
+   dialog card inside one takes this cap. */
+body[data-dsh-claude-style] :is(dialog, [role="dialog"]):not(.dsvs-boot, [data-dsh-claude-part~="overlay"], [data-dsh-claude-part~="backdrop"]) {
   max-width: calc(var(--dsh-claude-page-width, 100vw) - 48px);
   max-height: calc(var(--dsh-claude-page-height, 100vh) - 48px);
 }
@@ -344,10 +347,10 @@ body[data-dsh-claude-style] [data-slot="conversation.session.header.actions"] > 
    only if the host changes its geometry. */
 
 /* The conversation header carries the host's own bottom border — the line under
-   the tabs; the transcript's top fade below takes over that job. Scoped by the
-   hold mark to the header that owns the tab strip, so no other header loses its
-   edge (D9). */
-body[data-dsh-claude-style] [data-dsh-claude-part~="conversation-header"][data-dsh-claude-holds~="view-tabs"] {
+   the tabs; the transcript's top fade below takes over that job. Scoped to the
+   header view-tabs has marked as its own, so no other header loses its edge and
+   a switched-off preference hands this one back its line (D9). */
+body[data-dsh-claude-style] [data-dsh-claude-part~="conversation-header"][data-dsh-view-tabs-taken] {
   border-bottom-color: transparent;
   /* The host's header rule sets no position, so it is static and an absolutely
      positioned band would anchor to a far ancestor. The stickiness lives on the
@@ -359,7 +362,7 @@ body[data-dsh-claude-style] [data-dsh-claude-part~="conversation-header"][data-d
 /* The transcript's top fade: the header already covers the transcript, so the
    band hangs off the header's own bottom edge and follows it. One knob,
    --dsh-transcript-fade-h, matching the composer's own fade. */
-body[data-dsh-claude-style] [data-dsh-claude-part~="conversation-header"][data-dsh-claude-holds~="view-tabs"]::after {
+body[data-dsh-claude-style] [data-dsh-claude-part~="conversation-header"][data-dsh-view-tabs-taken]::after {
   content: "";
   position: absolute;
   left: 0;

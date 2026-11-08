@@ -15,11 +15,11 @@ export default {
     const settings = r.settings || {}
     check('the settings section registers with the settings dialog', settings.registered === true, JSON.stringify(settings.registered))
     const expected = {
-      general: ['brand', 'username', 'pageZoom', 'autoPopover', 'sodium'],
+      general: ['brand', 'username', 'pageZoom', 'interfaceFontSize', 'autoPopover', 'sodium'],
       appearance: ['sidebarBrand', 'brandLockup', 'brandInk', 'palette', 'paletteCards', 'backgroundOpacity', 'typeface', 'homeLayout', 'homeRipple', 'mascot', 'mascotScope'],
       'main-window': ['turnNav', 'messageActions', 'conversationWidth', 'viewTabs', 'headerBand', 'processRows', 'answerAnchor', 'composerScope', 'composerBottomGap', 'questionCard', 'permissionsControl', 'modelPicker', 'effortSlider', 'modelDescriptions', 'quickProviders', 'peakrate', 'effortAccent', 'contextDisplay', 'contextNumbers', 'statsPosition', 'statsFooterAlign', 'billingCurrency', 'billingTable'],
       sidebar: ['collapseFooter', 'banLocale', 'sidebarSearch', 'searchStyle', 'sidebarEntries', 'workspaceView', 'sidebarPeek', 'sidebarLayout'],
-      motion: ['motion', 'chatAnimations', 'chatWait', 'statusDetail', 'statusMotion', 'chatReveal', 'chatSend', 'messageEnter', 'caretMotion', 'ongoingIndicator', 'ongoingIndicatorSide'],
+      motion: ['motion', 'chatAnimations', 'chatWait', 'statusDetail', 'statusMotion', 'chatReveal', 'chatSend', 'messageEnter', 'caretMotion', 'ongoingIndicator', 'ongoingIndicatorSide', 'reasoningDisplay'],
     }
     // The main window's three groups, each under its label and carrying its own
     // rows: the conversation side, the composer's controls with the model
@@ -239,6 +239,10 @@ export default {
       !!sw.allOff && keys.every((key) => !present(sw.allOff, key)), JSON.stringify(sw.allOff))
     check('all switches back on bring every feature back', !!sw.allOn && keys.every((key) => present(sw.allOn, key)), JSON.stringify(sw.allOn))
     const view = sw.view || {}
+    const dateView = sw.dateView || {}
+    check('the date view stays off until the bell is pressed, and the bell gives the reader\'s grouping back',
+      dateView.start === 'workspace' && dateView.on === 'flat' && dateView.off === 'workspace',
+      JSON.stringify(dateView))
     const archivedView = view.archived || {}
     const activeView = view.active || {}
     check('the 已归档 segment drives the host\'s own view: archived rows alone in one flat list, and the segment checked',

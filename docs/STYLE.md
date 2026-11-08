@@ -216,6 +216,9 @@ blurs what lies behind it so its rows stay readable over a picture.
 Under the host typeface the skin's own faces fall back to the host's:
 `--dsh-claude-font-serif`, `-prose` and `-brand` to `--dsw-font-family` (the
 host carries no serif), `--dsh-claude-font-code` to `--ds-font-family-code`.
+System sans shares `ui-sans-serif, system-ui, sans-serif` across those
+proportional faces and the Markdown shorthands, while code keeps its own
+monospace stack and language fallback stays with the browser.
 
 The account-hold page keeps its own colours, reproducing a Claude screen. The
 reasoning slider and its trigger take the theme accent: the dot matrix and knob
@@ -424,8 +427,7 @@ edit the JSON, not the table.
 | `--dsh-claude-scale-lift-falloff` | `0.45` | the share of its neighbour's lift a colour disc keeps, one disc further from the pointer |
 | `--dsh-claude-scale-dialog` | `0.96` | the scale a full-window dialog grows from and returns to |
 | `--dsh-claude-scale-dot-mid` | `0.55` | how small a loader dot is while it crosses the middle of its line; at either end it is the dot's own size, so the line motion never draws a dot larger than the bouncing one |
-| `--dsh-claude-duration-resize` | `300ms` | a surface taking a new size: the model picker's second level following the list a query leaves |
-| `--dsh-claude-timing-resize` | `var(--dsh-claude-duration-resize) var(--dsh-claude-ease-settle)` | shorthand: a size change, written after the property in a transition |
+| `--dsh-claude-duration-resize` | `300ms` | a surface taking a new size: the model picker's card following a fold or the list a query leaves |
 | `--dsh-claude-timing-feedback` | `var(--dsh-claude-duration-feedback) var(--dsh-claude-ease-standard)` | shorthand: a control's state change, written after the property in a transition |
 | `--dsh-claude-timing-surface` | `var(--dsh-claude-duration-surface) var(--dsh-claude-ease-standard)` | shorthand: a surface appearing, written after the property or the keyframes' name |
 <!-- /generated:motion -->

@@ -15,6 +15,7 @@ import { captureComposerCaret, composerComposing, focusKeepingComposerCaret } fr
 import { createPlaceholderCopy } from './placeholder-copy'
 import { installWindowBlurMirror } from './selection-mirror'
 import { createComposerResponsive } from './responsive'
+import { createComposerViewportFollow } from './visual-viewport'
 
 /** Inspection views where the host's composer seat stands down; content and plugin views keep it. */
 const COMPOSER_HIDDEN_VIEWS: ReadonlySet<string> = new Set([CONVERSATION_VIEW_TRAJECTORY, CONVERSATION_VIEW_CONTEXT, CONVERSATION_VIEW_STATS])
@@ -63,6 +64,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
   const placeholders = observeComposerPlaceholders()
   const placeholderCopy = createPlaceholderCopy(cards, placeholders, composerComposing)
   const responsive = createComposerResponsive()
+  const stopViewportFollow = createComposerViewportFollow()
   /**
    * The attachment tiles the skin marked, read once at install so a generation
    * whose teardown a hot reload dropped still has its marks swept.
@@ -519,6 +521,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
     document.removeEventListener('compositionend', onCompositionEnd, true)
     placeholderCopy.dispose()
     responsive.dispose()
+    stopViewportFollow()
     cards.release()
     placeholders.release()
     document.body.removeAttribute(COMPOSER_ATTR)

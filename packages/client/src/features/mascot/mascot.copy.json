@@ -8,5 +8,7 @@
   "mascotOff": { "zh": "关闭", "en": "Off" },
   "mascotScopeTitle": { "zh": "出现位置", "en": "Where it appears" },
   "mascotScopeHome": { "zh": "首页", "en": "Home" },
-  "mascotScopeAll": { "zh": "首页与对话", "en": "Home and conversation" }
+  "mascotScopeAll": { "zh": "首页与对话", "en": "Home and conversation" },
+  "mascotBalanceLabel": { "zh": "余额", "en": "Balance" },
+  "mascotSessionLabel": { "zh": "会话", "en": "Session" }
 }

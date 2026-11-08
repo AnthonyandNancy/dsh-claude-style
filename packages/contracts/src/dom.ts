@@ -195,6 +195,9 @@ export const ASSISTANT_STEP_KIND = 'assistant-step'
 export const TOOL_CALL_KIND = 'tool-call'
 /** The kind of a turn's process group, which the host's widest flow gap follows (D78). */
 export const TURN_PROCESS_ROW_KIND = 'turn-process'
+/** A settled turn's tail row, which carries the answer's own action controls. */
+const TURN_TAIL_KIND = 'turn-tail'
+export const TURN_TAIL_SELECTOR = `[${FLOW_KIND_ATTRIBUTE}="${TURN_TAIL_KIND}"]`
 /**
  * The answer a turn's process group closes on.
  *
@@ -448,6 +451,12 @@ export const RIGHTBAR_HANDLE_SELECTOR = '[data-side="rightbar"]'
 /** The sidebar's drag handle; the host places it at the sidebar's own width. */
 export const SIDEBAR_HANDLE_SELECTOR = '[data-side="sidebar"]'
 /**
+ * The conversation column's width handle: the host draws a 2px bar on its own
+ * `::after` and reveals it while the pointer is over the hit strip, so the skin
+ * owns when that bar is up (features/width-handle, issue #270).
+ */
+export const WIDTH_HANDLE_SELECTOR = '[data-width-handle]'
+/**
  * The frame's collapse marker: the host writes it on the frame while the
  * sidebar is closed and takes it away while the sidebar stands open, whatever
  * opened it (the toggle, its shortcut, a search that asks for the wide list).
@@ -485,6 +494,12 @@ export const HEADER_TITLE_ROW_SELECTOR = '[data-dsh-claude-part~="title-row"]'
  * where the title ends).
  */
 export const HEADER_TITLE_SELECTOR = '[data-dsh-claude-part~="header-title"]'
+/**
+ * The seat the host keeps beside the title inside the same cluster: the preset
+ * picker and the chips the session mounts there. The band lifts it into the
+ * caption row after the title, so the row the title leaves holds nothing.
+ */
+export const HEADER_ACTIONS_SELECTOR = '[data-dsh-claude-part~="header-actions"]'
 /** The header's utilities cluster: the workspace opener, the overflow menu, the bottom-panel toggle. */
 export const HEADER_UTILITIES_SELECTOR = '[data-dsh-claude-part~="header-utilities"]'
 /** The corner seat beside the utilities, carrying the right-sidebar toggle. */

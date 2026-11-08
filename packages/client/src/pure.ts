@@ -1,5 +1,5 @@
 /**
- * The browser half's declared logic surface (D77): the functions the logic layer
+ * The browser half's declared logic surface (D87): the functions the logic layer
  * of the specs (packages/testing/specs/logic/) may call below the page, and the
  * one stylesheet a placement function measures against.
  *
@@ -76,6 +76,8 @@ export { default as SLIDING_PILL_SHEET } from './shared/sliding-pill.css?raw'
 export { ACTIVITY_THINKING, activityWords, waitingWord } from './shared/turn-activity'
 export { inPageColumns, inPageLength, installFrameColumns } from './shared/page-scale-columns'
 export { pageZoomOf, pageZoomPercent, pageZoomText } from './shared/page-zoom'
+export { interfaceFontSizeOf, interfaceFontSizePercent } from './shared/interface-font-size'
+export { webfontRules } from './shared/webfont-rules'
 export { install as installActiveFirst } from './features/active-first/active-first'
 export { install as installRowSkip } from './features/row-skip/row-skip'
 export { ARCHIVED_PAGE_SIZE, archivedOrder, createArchivedList } from './features/workspace/archived-list'
@@ -91,6 +93,7 @@ export { UnreadRowMark, unreadRowSessionId } from './features/manual-unread/row-
 export { default as MANUAL_UNREAD_SHEET } from './features/manual-unread/manual-unread.css?raw'
 
 export { createComposerResponsive } from './features/composer/responsive'
+export { composerViewportGap } from './features/composer/visual-viewport'
 export { default as composerInlineCss } from './features/composer/inline.css?raw'
 export { default as composerInlineBarCss } from './features/composer/inline-bar.css?raw'
 export { default as composerResponsiveCss } from './features/composer/responsive.css?raw'

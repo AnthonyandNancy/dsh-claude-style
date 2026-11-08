@@ -181,7 +181,9 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
         const peakrate = ui.peakrate
         if (peakrate === undefined) return null
         return peakrate.badge(provider, modelId)
-      }
+      },
+      /** Both cards hang above the seat: a fold's new height moves their top. */
+      reposition: () => cards.position(),
   })
 
   /**
@@ -206,23 +208,12 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
   }
 
   /**
-   * What the rows' rates depend on, in one value the render signatures carry.
-   * The catalog is the meter feature's (its generation moves when one arrives).
-   * The minute is not part of it: a closed card is not repainted by the clock,
-   * and the minute reaches the rows through refreshRateBadges instead.
-   */
-  function rateSignature() {
-    const peakrate = ui.peakrate
-    if (peakrate === undefined) return ''
-    return `${peakrate.epoch()}`
-  }
-
-  /**
    * Swap both cards' rate meters for the current ones (rows.ts owns the rows
    * and their identity). The badge is the one minute-sensitive part of a row
-   * (the countdown to the rate switch), and the card open and the minute
-   * rollover call this instead of the full paint: with a four-digit catalog
-   * the full paint is the open lag the feature cannot afford on every open.
+   * (the countdown to the rate switch), and the card open, the minute
+   * rollover and an arriving catalog call this instead of the full paint: a
+   * page that reloads paints its rows before the catalog lands, and rebuilding
+   * them for the badges would flash the whole list.
    */
   function refreshRateBadges() {
     modelRows.refreshRates()
@@ -266,7 +257,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
     const status = snap ? snap.status : 'idle'
     const groups = (snap && snap.groups) || []
     const current = modelCatalog.current(snap)
-    let sig = [status, activeLocale(), current ? `${current.group.id}/${current.model.id}` : '', readPrefs().quickProviders.join(','), readPrefs().modelDescriptions !== false, rateSignature()].join('|')
+    let sig = [status, activeLocale(), current ? `${current.group.id}/${current.model.id}` : '', readPrefs().quickProviders.join(','), readPrefs().modelDescriptions !== false].join('|')
     sig += rowsSignature(groups)
     if (sig === modelBodySig) {
       modelRows.refreshRates()
@@ -295,12 +286,15 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
           // The official source needs no naming, and the first section needs
           // no rule: a bare line above the list would be one line too many.
           const sectionLabel = section.id === MODEL_OFFICIAL_GROUP ? '' : modelGroupName(section.id, section.name)
-          if (sectionLabel !== '' || s > 0) modelBody.appendChild(modelRows.buildProviderRule(sectionLabel))
           const sectionModels = section.models.slice().sort(byModelId)
-          for (let m = 0; m < sectionModels.length; m++) {
-            const selected = current !== null && current.group.id === section.id && current.model.id === sectionModels[m].id
-            modelBody.appendChild(modelRows.buildModelOption(section, sectionModels[m], selected, true))
+          if (s === 0 && sectionLabel === '') {
+            for (const model of sectionModels) {
+              const selected = current !== null && current.group.id === section.id && current.model.id === model.id
+              modelBody.appendChild(modelRows.buildModelOption(section, model, selected, true))
+            }
+            continue
           }
+          modelBody.appendChild(modelRows.buildProviderGroup(section, sectionModels, sectionLabel, current, true))
         }
       }
       // The current seat is surfaced under the list when none of the sections
@@ -354,7 +348,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>, mount:
     const sections = modelRows.levelOneSections(groups)
     const listed: string[] = []
     for (let s = 0; s < sections.length; s++) listed.push(sections[s].id)
-    let sig = `more|${listed.join(',')}|${rateSignature()}`
+    let sig = `more|${listed.join(',')}`
     sig += rowsSignature(groups)
     if (current) sig += `#${current.group.id}/${current.model.id}`
     return sig

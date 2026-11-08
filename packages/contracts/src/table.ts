@@ -1,7 +1,7 @@
 /**
  * The host contract as one table (D3): the literals in packages/contracts/src/dom.ts,
  * each with what the skin reads it for and how the contract test checks it on
- * a live host (D77).
+ * a live host (D87).
  *
  * The table is build and test data rather than runtime data: the browser bundle
  * carries the literals alone, so the notes cost the page nothing. The build
@@ -12,12 +12,12 @@
  *
  * The host build these entries were checked on is the one the service shapes
  * name (packages/contracts/src/services.ts, 0.2.1-alpha.1), and the lane's
- * `contract` scenario walks every `probe` below against a live host (D3, D77).
+ * `contract` scenario walks every `probe` below against a live host (D3, D87).
  */
 import * as dom from './dom'
 
 /**
- * The page state an entry is checked in (D77): the empty page, the moment a
+ * The page state an entry is checked in (D87): the empty page, the moment a
  * submission goes through, an answer streaming in, a settled conversation of two
  * turns, the host's own account menu open, or the host's dark flip. `any` holds
  * everywhere the page is served.
@@ -34,7 +34,7 @@ type HostDomProbeState = 'any' | 'hero' | 'sending' | 'streaming' | 'conversatio
  * - `computed` — the element `within` names, or that element's parent under
  *   `parent`, resolves `property`; the value the host snapshot holds under
  *   `record` is compared as the host's own output, so a difference is reported
- *   as an observation (D77).
+ *   as an observation (D87).
  * - `global` — the dotted path resolves on the page.
  * - `value` — the string appears as the value of some attribute.
  * - `rail-geometry` — the rail's marks and its scroller's content height agree
@@ -71,7 +71,7 @@ interface HostDomEntry {
   id: string
   /** The literal, as the host writes it. */
   value: string
-  /** How the contract test checks it (D77). */
+  /** How the contract test checks it (D87). */
   probe: HostDomProbe
   /**
    * A bare attribute name (`data-placeholder`) rather than a selector: what the
@@ -162,6 +162,7 @@ export const HOST_DOM: HostDomEntry[] = [
   { id: 'chat.group-part', value: dom.CHAT_GROUP_PART_ATTRIBUTE, probe: { state: 'conversation', kind: 'attribute' }, use: 'which part of an assistant step a row holds, which tells a thought from an output' },
   { id: 'chat.group-part-reasoning', value: dom.CHAT_GROUP_PART_REASONING, probe: { state: 'conversation', kind: 'value' }, use: 'the part value of a step\u2019s thinking row' },
   { id: 'chat.answer-row', value: dom.CHAT_ANSWER_ROW_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the answer\u2019s own row of an assistant step, named by its part: a live turn marks the answer row as a process member too, so the member mark tells the answer only once the answer has ended' },
+  { id: 'chat.turn-tail', value: dom.TURN_TAIL_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the settled turn\u2019s tail row, which carries the answer\u2019s own action controls for the turn named by data-chat-turn' },
   { id: 'process.header-label', value: dom.PROCESS_HEADER_LABEL_SELECTOR, probe: { state: 'conversation', kind: 'selector', within: 'process.activity' }, use: 'the words of a process group\u2019s header, which the counted summary stands in for' },
   { id: 'chat.running-text', value: dom.CHAT_RUNNING_TEXT_SELECTOR, probe: { state: 'streaming', kind: 'selector', within: 'chat.running' }, use: 'the words of the live turn\u2019s running row, which the waiting line stands in for beside the host\u2019s whale' },
   { id: 'chat.running-icon', value: dom.CHAT_RUNNING_ICON_SELECTOR, probe: { state: 'streaming', kind: 'selector', within: 'chat.running' }, use: 'the host\u2019s own running indicator at the head of the live turn\u2019s row, which the waiting line hides under the Claude brand and stands its own loader in for' },
@@ -194,6 +195,7 @@ export const HOST_DOM: HostDomEntry[] = [
   { id: 'conversation.view-stats', value: dom.CONVERSATION_VIEW_STATS, probe: { state: 'any', kind: 'none' }, use: 'the host context-statistics view id, where the composer stands down' },
   { id: 'header.row', value: dom.HEADER_TITLE_ROW_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the header\u2019s title row: the line the title, the utilities and the corner seat share, and what the band placement measures against' },
   { id: 'header.title', value: dom.HEADER_TITLE_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the session title\u2019s own breadcrumb; the desktop caption row lifts it when it fits' },
+  { id: 'header.actions', value: dom.HEADER_ACTIONS_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the seat beside the title carrying the preset picker and the session chips, lifted into the caption row after the title' },
   { id: 'header.utilities', value: dom.HEADER_UTILITIES_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the header\u2019s utilities cluster (the workspace opener, the overflow menu, the bottom-panel toggle), lifted with it' },
   { id: 'header.corner', value: dom.HEADER_CORNER_SELECTOR, probe: { state: 'conversation', kind: 'selector' }, use: 'the corner seat beside the utilities, carrying the right-sidebar toggle' },
   { id: 'header.element', value: dom.CONVERSATION_HEADER_SELECTOR, probe: { state: 'any', kind: 'none' }, use: 'the conversation header, resolved with closest() from the title row; queried document-wide the substring names a dozen other bars' },
@@ -223,6 +225,7 @@ export const HOST_DOM: HostDomEntry[] = [
   { id: 'shell.rightbar-panel', value: dom.RIGHTBAR_PANEL_SELECTOR, probe: { state: 'any', kind: 'none' }, use: 'the right panel\u2019s own box, mounted only once that panel has been opened: the host states its width from the viewport\u2019s pixels, which the page\u2019s zoom scales a second time' },
   { id: 'shell.rightbar-handle', value: dom.RIGHTBAR_HANDLE_SELECTOR, probe: { state: 'any', kind: 'none' }, use: 'the right column\u2019s drag handle: the host places it from the viewport\u2019s own width, so it leaves the panel\u2019s visible edge under the page\u2019s zoom' },
   { id: 'shell.sidebar-handle', value: dom.SIDEBAR_HANDLE_SELECTOR, probe: { state: 'any', kind: 'none' }, use: 'the sidebar\u2019s drag handle, mounted only while the sidebar is expanded: the host places it at the sidebar\u2019s width, which the page\u2019s zoom scales a second time', owner: 'core' },
+  { id: 'shell.width-handle', value: dom.WIDTH_HANDLE_SELECTOR, probe: { state: 'any', kind: 'none' }, use: 'the conversation column\u2019s width handle, drawn from the transcript\u2019s own edge: the host\u2019s bar on its `::after` is revealed the frame the pointer enters the strip, so the skin states when it is up (issue #270)' },
   { id: 'shell.sidebar-collapsed', value: dom.SIDEBAR_COLLAPSED_ATTRIBUTE, probe: { state: 'any', kind: 'none' }, use: 'the frame\u2019s collapse marker, written only while the sidebar is closed: the peek opens only from it, and its return is when the peek gives the column back to the grid' },
   { id: 'shell.rightbar-collapsed', value: dom.RIGHTBAR_COLLAPSED_ATTRIBUTE, probe: { state: 'any', kind: 'attribute' }, use: 'the frame gives the right panel no track; while it is absent on a narrow frame, opening the sidebar would take that panel away, so the peek stays shut' },
   { id: 'shell.sidebar-beside-rightbar', value: String(dom.SIDEBAR_BESIDE_RIGHTBAR_MIN_PX), probe: { state: 'any', kind: 'none' }, use: 'the narrowest frame the host keeps an open right panel on beside an open sidebar; below it the peek stays shut, since opening the sidebar would take that panel away' },

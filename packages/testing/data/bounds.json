@@ -1,5 +1,5 @@
 {
-  "note": "The bounds a check compares against, each with the reason it holds that value (D77: a check reads its bound here instead of carrying a number of its own, so loosening one is a visible change with a reason beside it). The bounds of the other lanes move in with the migration; this file holds the ones a check reads so far.",
+  "note": "The bounds a check compares against, each with the reason it holds that value (D87: a check reads its bound here instead of carrying a number of its own, so loosening one is a visible change with a reason beside it). The bounds of the other lanes move in with the migration; this file holds the ones a check reads so far.",
   "bounds": [
     {
       "name": "longSessionPassCalls",
@@ -32,11 +32,6 @@
       "reason": "The short round's p95 frame sits near the frame budget on a fast runner, so the p95 ratio is compared against a floor in milliseconds as well as the factor; without it the comparison divides by a number too small to mean anything."
     },
     {
-      "name": "longSessionWorstFrameMs",
-      "value": 250,
-      "reason": "The worst frame a long session may take over the measured turn: about fifteen 60 Hz frames. A frame that costs more than this is a stall the reader would see, and the reading is a wall clock between animation frames on a headless runner, so it sits far above one frame on purpose."
-    },
-    {
       "name": "longSessionMinSpanMs",
       "value": 300,
       "reason": "The least stretch of wall clock the sampled frames of the measured turn must cover: twenty frames of a 60 Hz display. The span is read in milliseconds so a display that draws fewer frames a second is judged on the same stretch as one that draws sixty."
@@ -54,7 +49,7 @@
     {
       "name": "followAtEndPx",
       "value": 6,
-      "reason": "A browser clamps a scroll position a few pixels inside `scrollHeight - clientHeight` when a child's own overflow or a scrollbar rounds it, so this is the distance from the end that counts as arrived (D77)."
+      "reason": "A browser clamps a scroll position a few pixels inside `scrollHeight - clientHeight` when a child's own overflow or a scrollbar rounds it, so this is the distance from the end that counts as arrived (D87)."
     },
     {
       "name": "followCatchUpStartPx",
@@ -85,6 +80,11 @@
       "name": "followSlideRowDriftPx",
       "value": 0.5,
       "reason": "How far the live turn's row may move on screen while the column slides under it: the row carries the same slide reversed, started in the same frame, so the two cancel exactly; half a pixel leaves room for the rounding of two offsets and nothing a reader could see."
+    },
+    {
+      "name": "streamSlideCarryTailPx",
+      "value": 4,
+      "reason": "How far past one growth the sliding column may be read at the frame after a growth: the slide restarts from the distance it had not paid back, which is the tail of the previous one still running when the next piece lands. The two runners measured under 2px; a distance that accumulates with the pieces instead of settling runs to tens of pixels within a few steps."
     },
     {
       "name": "followQuietFrames",
@@ -190,6 +190,16 @@
       "name": "streamColumnFootPx",
       "value": 16,
       "reason": "The foot the message column keeps under its last row, counting the wrapper the host puts around it: room for the composer that a scroller overflows into. The scenario's lag is read from that last row, so this foot comes off the longest stretch a slide carries before it is compared."
+    },
+    {
+      "name": "streamJitterGrowthPx",
+      "value": 1000,
+      "reason": "How far the answer has to grow during the paced stream before its frames count as a reading. The scripted answer is 640 short lines, taller than any viewport the lane uses; a stream that grew less than this never outgrew the scroller, and the column's top then stands still for a reason that has nothing to do with the slide."
+    },
+    {
+      "name": "streamJitterMovePx",
+      "value": 1,
+      "reason": "How far the message column's screen top may move down between two sampled frames while the host follows it. Every growth the host pins is put back down in the same frame, so the recording's own moves are still or upward; the pixel covers the rounding of two transform readings and nothing a reader could see."
     },
     {
       "name": "firstPaintDeferredChunks",

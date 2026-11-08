@@ -1,4 +1,4 @@
-// The logic and mechanism layers of the specs (D77): Vitest in browser mode,
+// The logic and mechanism layers of the specs (D87): Vitest in browser mode,
 // driving a local Chrome/Edge through Playwright, so the DOM, MutationObserver,
 // ResizeObserver, layout and frames a spec reads are the browser's own.
 // CHROME_PATH chooses the browser, as for the smoke. The behaviour layer drives
@@ -50,10 +50,10 @@ export default defineConfig({
     attachmentsDir: '.debug/vitest',
     // Browser mode binds a control port, and its own default (63315) falls inside
     // a Windows dynamic port exclusion on some machines: the bind fails with
-    // EACCES before a single test runs. 51204 is Vitest's other default and sits
-    // below the dynamic range's start, outside every exclusion seen so far. Bind
-    // IPv4 explicitly so a localhost lookup that prefers ::1 cannot miss it.
-    api: { host: '127.0.0.1', port: 51204 },
+    // EACCES before a single test runs. 51233 sits below the dynamic range's
+    // start, outside every exclusion seen so far. Bind IPv4 explicitly so a
+    // localhost lookup that prefers ::1 cannot miss it.
+    api: { host: '127.0.0.1', port: 51233 },
     browser: {
       enabled: true,
       headless: true,

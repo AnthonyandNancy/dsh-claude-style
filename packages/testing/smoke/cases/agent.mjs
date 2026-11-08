@@ -13,7 +13,7 @@ export default {
       r.permRows.every(function (row) { return row.preset !== 'auto' }) && r.permAutoRowDisplay === null,
       JSON.stringify(r.permRows))
     check('the tier reads as a Claude name, not as its machine id',
-      r.permRows[2].text.indexOf('Auto mode') === 0 && r.permRows[2].text.indexOf('分类器') !== -1 &&
+      r.permRows[2].text.indexOf('Auto mode') === 0 && r.permRows[2].text.indexOf('classifier') !== -1 &&
         r.permRows[2].text.indexOf('auto-mode') === -1,
       JSON.stringify(r.permRows[2].text))
     check('the ladder stays one text list: no row draws a glyph',
@@ -48,6 +48,13 @@ export default {
     check('switching the interface language repaints the rows and the trigger under the skin\'s own names',
       same(r.permNamesEn, ['Read only', 'Accept edits', 'Auto review', 'Full access']) && r.permTriggerEn === 'Full access',
       JSON.stringify({ names: r.permNamesEn, trigger: r.permTriggerEn }))
+    // The line under each name is the skin's own too, and it follows the same
+    // switch: a Chinese page reads Chinese, every other language the English
+    // line rather than leaving the Chinese one under an English name.
+    check('the line under each name follows the interface language as well',
+      same(r.permDescsZh, ['仅读取文件与分析，不修改代码', '允许编辑工作区文件', '无沙箱运行，调用前由模型审查', '自动执行，无需反复确认']) &&
+        same(r.permDescsEn, ['Read files and analyze them without changing code', 'Allow edits to files in the workspace', 'Run without a sandbox; the model reviews each call first', 'Run everything without repeated confirmation']),
+      JSON.stringify({ zh: r.permDescsZh, en: r.permDescsEn }))
     check('the composer\'s idle hint is the skin\'s own words in that language',
       same(r.hintsZh, { hosted: '输入 / 以使用命令', synthetic: null }) &&
         r.hintsDrawnZh === '输入 / 以使用命令',
@@ -156,9 +163,9 @@ export default {
   },
   'sync-fault'(r) {
     check('apply() completes', r.applyError === null, r.applyError)
-    check('only the four features that read the session list were switched off: the permission control, the model picker, the manual unread marks and the date groups',
-      r.errors.length === 4 && r.errors.some((e) => e.includes('"permissions"')) && r.errors.some((e) => e.includes('"model"')) &&
-        r.errors.some((e) => e.includes('"manualUnread"')) && r.errors.some((e) => e.includes('"dateGroups"')), r.errors.join(' | '))
+    check('only the three features that read the session list were switched off: the permission control, the model picker and the manual unread marks; the date view reads it only once the bell is pressed',
+      r.errors.length === 3 && r.errors.some((e) => e.includes('"permissions"')) && r.errors.some((e) => e.includes('"model"')) &&
+        r.errors.some((e) => e.includes('"manualUnread"')) && !r.errors.some((e) => e.includes('"dateGroups"')), r.errors.join(' | '))
     check("the host's own access button is handed back", r.hostAccessVisible === true, JSON.stringify(r.hostAccessVisible))
     check('the composer restyle keeps running', r.composerRestyle === true, JSON.stringify(r.composerRestyle))
     check('the rest of the skin keeps running', r.accountUser === 'Tester', JSON.stringify(r.accountUser))

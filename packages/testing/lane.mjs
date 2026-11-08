@@ -1,8 +1,14 @@
 /**
  * lane.mjs — what the end-to-end lane's runner and its scenarios read off the
  * page alike: the host's markers, the skin's own marks, the settled flow, and
- * the shape of one assertion (D77).
+ * the shape of one assertion (D87).
  */
+
+import surfaceTable from './data/surface.json' with { type: 'json' }
+
+const STATS_LINE = surfaceTable.surface.find((entry) => entry.id === 'stats.inline-line')
+const STATS_FOOTER_LINE = surfaceTable.surface.find((entry) => entry.id === 'stats.footer-line')
+if (STATS_LINE?.selector === undefined || STATS_FOOTER_LINE?.attribute === undefined) throw new Error('lane: the statistics surfaces are incomplete')
 
 /**
  * The host's page markers this lane reads. Each one is a D3 entry in
@@ -12,7 +18,9 @@
 const HOST = {
   composer: '[data-composer-input]', // COMPOSER_INPUT_SELECTOR
   composerCard: '[data-composer-card]', // COMPOSER_CARD_SELECTOR
+  composerSeat: '[data-composer-seat]', // COMPOSER_SELECTOR
   userRow: '[data-chat-flow-kind="user"]', // FLOW_KIND_ATTRIBUTE with the host's user kind
+  answerRow: '[data-chat-flow-kind="assistant-step"]:not([data-turn-process-member])', // TURN_PROCESS_ANSWER_SELECTOR
   flow: '[data-chat-flow]', // CHAT_FLOW_SELECTOR
   streaming: '[data-streaming]', // STREAMING_SELECTOR
   turnProcess: 'button[data-turn-process]', // the host's own process control, which the skin leaves alone
@@ -35,6 +43,8 @@ const SKIN = {
   echoAttribute: 'data-submission-echo', // SUBMISSION_ECHO_SELECTOR without its brackets
   // The other mark the pin reads while a door rolls (FOLLOW_HOLD_ATTR).
   hold: '[data-dsh-claude-follow-hold]', // FOLLOW_HOLD_ATTR
+  statsLine: STATS_LINE.selector,
+  statsFooterLine: STATS_FOOTER_LINE.attribute,
 }
 
 /** Both tables, for the sampler that runs inside the page. */
@@ -64,7 +74,7 @@ function check(name, ok, detail) {
 
 /**
  * One reading of what the host draws, compared with the record the repository
- * keeps of it (D77). The host is not this repository's to change, so a
+ * keeps of it (D87). The host is not this repository's to change, so a
  * difference is reported with its evidence and fails nothing: the run prints it,
  * files it in the traces, and the record is written again when someone reads it.
  */
@@ -93,7 +103,7 @@ function measureFrameMs(page) {
 
 /**
  * Record `read(arg)` inside the page on every frame from now until the page has
- * settled, and answer the readings (D77: the settle rule). The page has settled
+ * settled, and answer the readings (D87: the settle rule). The page has settled
  * when its finite animations have landed and the document has not changed for
  * eight frames' worth of a 60 Hz display (134 ms, over at least two frames, so a
  * slower display waits the same wall clock); an endless animation (a sweep, a

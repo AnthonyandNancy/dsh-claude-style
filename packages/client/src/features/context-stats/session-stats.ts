@@ -13,13 +13,24 @@ import { paintContextPie, readPieColours, releaseContextPie } from './context-me
 import { CONTEXT_STATS_ATTR, CONTEXT_PANEL_ATTR, clearStrayContextNodes, contextMeters, contextPanel, findContextMeter, markContextMeter, meterOccupancy, releaseCardWatch, releaseDialogWatch } from './stats-panel'
 import { CONTEXT_STOPS, rampPosition, writeRamp } from './stats-ramp'
 import { writeContextBand } from './context-meter-face'
-import { priceFor, priceTierAt } from '@dsh-claude-style/contracts/prices'
+import { priceFor, priceModelId, priceTierAt } from '@dsh-claude-style/contracts/prices'
 import { overlayBilling } from '@dsh-claude-style/contracts/billing-table'
 import type { Currency } from '@dsh-claude-style/contracts/prices'
 import type { HostContext, HostText } from '@dsh-claude-style/engine/host'
 import type { HostContextPressureProjection, HostSessionStatsProjection, HostSnapshotSource, HostTokenUsageProjection } from '@dsh-claude-style/contracts/services'
 import type { StatsReading } from './stats-count'
 import type { PieColours } from './context-meter-pie'
+
+/** The shown session's cost in micro units, in the currency billing follows. */
+export interface SessionCostReading {
+  /** The host session the figure belongs to. */
+  sessionId: string
+  cost: number | null
+  currency: Currency
+  pending: boolean
+  /** Whether the route bills at the platform's own list (the official models only). */
+  official: boolean
+}
 
 /** The ring the composer row carries, as the statistics read it (meter-ring.ts). */
 export interface MeterRingFace {
@@ -76,7 +87,7 @@ function pressureOccupancy(pressure: HostContextPressureProjection | null) {
  * @param ctx - client context: the session binding and the locale seat.
  * @param ring - the ring the composer row carries (ui.meterRing), while the
  *   feature that draws it is installed.
- * @returns { measure, sync, close, reposition, teardown }.
+ * @returns { measure, sync, close, sessionCost, onSessionCost, reposition, teardown }.
  */
 export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace | null) {
   /** The projections the reading follows: the figures, the route the cost prices at, and the meter's share. */
@@ -282,6 +293,34 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
     if (position === STATS_POSITION_INLINE || position === STATS_POSITION_FOOTER) inline.render()
     else inline.clear()
     block.render()
+    for (const listener of costListeners) listener()
+  }
+
+  /** Who reads the session's cost outside the two surfaces (the mascot's bubble), told whenever they are rewritten. */
+  const costListeners = new Set<() => void>()
+
+  /**
+   * The shown session's cost as the two surfaces print it, or null when no
+   * session is followed or billing is off. `cost` is null while pending, and
+   * also for a route nothing prices (then `pending` is false).
+   */
+  /**
+   * Whether the route in force bills at the platform's own list: the document's
+   * official table holds every model the platform sells, and a catalogue-only
+   * model is billed by the vendor behind it instead.
+   */
+  function officialRoute(): boolean {
+    const selection = faceValue<ModelSelection>('modelSelection')
+    const model = cost.value()?.model ?? selection?.lastUsed?.model ?? selection?.next?.model ?? null
+    const document = priceDocument()
+    return model !== null && model !== undefined && document !== null && priceModelId(document, model) !== null
+  }
+
+  function sessionCost(): SessionCostReading | null {
+    const billing = currency()
+    if (watch === null || billing === null) return null
+    const read = reading()
+    return { sessionId: watch.sessionId, cost: read.cost, currency: billing, pending: read.costPending, official: officialRoute() }
   }
 
   /**
@@ -446,6 +485,12 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
     close() {
       binding.close()
     },
+    sessionCost,
+    /** Be told whenever the figures are written again; the return stops it. */
+    onSessionCost(listener: () => void) {
+      costListeners.add(listener)
+      return () => { costListeners.delete(listener) }
+    },
     /**
      * The viewport moved under the panel: the host re-places it from its
      * anchor, so the skin's own reading of where its edges belong
@@ -464,6 +509,7 @@ export function createSessionStats(ctx: HostContext, ring: () => MeterRingFace |
     teardown() {
       releaseWatch()
       offCost()
+      costListeners.clear()
       // The structure bus behind the estimate's call rows goes with the rest.
       estimate.stop()
       releaseCardWatch()

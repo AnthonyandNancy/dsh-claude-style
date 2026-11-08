@@ -2,6 +2,132 @@
 
 All notable changes to `dsh-claude-style` are documented here, newest first.
 
+## [0.20.0] - 2026-11-07
+
+[中文](#cn-0.20.0) | [English](#en-0.20.0)
+
+<h3 id="cn-0.20.0">新增功能</h3>
+
+- 新增吉祥物悬停气泡，以像素字体显示含赠金、随会话花费实时扣减的账号余额与当前会话的花费
+- 新增思考内容显示选择，默认两行步进并可改为逐字跟随
+- 新增模型选择器的供应商分组折叠，悬停时才出现两段线箭头，展开状态不跨会话保留；分组之间拉开间距，供应商分隔线画得更清楚
+- 新增模型回复所在轮次的重跑与删除，通过新分岔保留原会话
+- 新增 System sans 字体选择，统一界面与 Markdown 的系统无衬线回退
+- 新增独立界面字号调节，覆盖侧栏、输入区与设置等普通文字
+
+### 体验优化
+
+- 调整「思考内容显示」在设置页的位置，排到「动效」页末尾
+- 改善模型弹层改换尺寸时的观感，折叠供应商分组走 Card resize 过渡，展开时底边始终贴在触发区上方
+- 改善侧栏「工作区」标题行铃铛的墨色，与同一行里宿主的图标共用同一级墨色令牌
+- 改善侧栏「工作区」标题行铃铛的操作反馈，悬停底色与宿主的图标一致，指针停稳后给出进入或离开日期视图的提示
+
+### 问题修复
+
+- 修复未安装 Anthropic 字体时页面向这三个字体文件发出的 404 请求
+- 修复充值页的全窗口遮罩被对话框尺寸上限缩小、在窗口右侧和底部露出主界面的问题
+- 修复英文界面下权限档位的说明仍显示中文
+- 修复长间隔之后输出加快时聊天滚动位移逐渐累积、最新一行被推出可视区的问题
+- 修复读者上滑浏览时流式增长仍改变其滚动位置的问题
+- 修复流式输出收尾时消息列回弹与底部统计行跳动的问题
+- 修复侧栏工作区分组标题与会话标题在暗色下层级相近的问题
+- 修复移动端软键盘改变可视视口时输入区的跟随与底距
+- 修复移动端首页用量面板与热力图左右不居中的问题
+- 修复 Windows 顶栏高度与标题控件的垂直位置
+- 修复日期视图默认开启的问题，侧栏默认按宿主自己的分组排列，按下铃铛才排成日期段落，刷新后回到宿主分组
+- 修复账号余额对第三方供应商的会话也实时扣减的问题，平台余额只为官方供应商的会话变化
+- 修复界面重载后价格目录晚到导致模型行整张重画、费率徽标闪烁的问题
+
+<h3 id="en-0.20.0">New Features</h3>
+
+- Add a hover bubble over the mascot that shows, in a pixel font, the account balance with gifted credit drawn down live by the conversation's cost, and that cost
+- Add a reasoning display choice that steps the text two lines at a time by default, with continuous text as the option
+- Add collapsible provider groups to the model picker, with the two-stroke caret shown on hover and the fold never kept across sessions; provider groups sit further apart and their rule is drawn clearer
+- Add rerun and delete-turn actions for model answers, preserving the source session through a new branch
+- Add a System sans choice with one system fallback stack across the interface and Markdown
+- Add an independent font-size control for ordinary text in the sidebar, composer and settings
+
+### Improvements
+
+- Move the reasoning display row to the end of the Motion tab in settings
+- Improve the model picker's card when it changes size: a folded provider group travels over Card resize, and the card keeps its bottom edge above the trigger while a group opens
+- Improve the sidebar workspace header bell's ink to share the level the host's own icons in that row use
+- Improve the sidebar workspace header bell's feedback with the host's own hover wash and a tooltip naming the date view it switches to or from
+
+### Bug Fixes
+
+- Fix the 404 requests the page sent for the three Anthropic font files when they are not installed
+- Fix the recharge page's full-window overlay shrinking under the dialog size cap and leaving the main window showing at its right and bottom edges
+- Fix the permission tiers' descriptions staying Chinese on an English interface
+- Fix the chat scroll offset building up after a long pause in a faster stream and pushing the newest line out of view
+- Keep the reader's chosen scroll position steady while a streamed answer grows
+- Fix the message column rebound and footer statistics jump as a streamed answer settles
+- Separate sidebar workspace labels from session titles in the dark scheme
+- Keep the composer following the visible viewport as the mobile keyboard opens, moves and closes
+- Center the home usage panel and heat grid within the available column on mobile
+- Fix Windows caption height and vertical alignment of the title and header controls
+- Fix the date view opening by default; the sidebar follows the host's own grouping until the bell is pressed, and a reload returns to the host grouping
+- Stop the account balance deducting third-party provider sessions; the platform figure now moves only with the official providers' sessions
+- Stop the rate badges flashing when a reload's price catalog arrives after the model rows are painted
+
+## [0.19.10] - 2026-11-06
+
+[中文](#cn-0.19.10) | [English](#en-0.19.10)
+
+<h3 id="cn-0.19.10">新增功能</h3>
+
+- 新增读者消息的撤回与编辑，两者都从消息前分岔，撤回把原文放回新会话的输入框，编辑把改过的文字直接发出
+- 新增「重绘提问卡片」开关，关闭后提问卡片保留宿主原样
+- 新增会话菜单的持久化手动未读标记与再次访问清除
+- 新增进行中标记的左右位置选择，默认在行尾，左侧一档让标记回到行首插槽并保留真前导占位，第三方行首星标不再压住标题首字
+
+### 体验优化
+
+- 减少一批页面变化里主题自身写入的重复判定
+- 读者消息下面的时间与复制按钮改为指针落上去才显现，与 Claude Code 一致
+- 改善提问卡片宽度，与对话输入框上下对齐，问题标题换行更均衡
+- 皮肤自己绘制的按钮与标题改用宿主的提示气泡，不再使用浏览器原生提示
+- 背景不透明度一行只在壁纸插件生效时出现
+
+### 问题修复
+
+- 修复回答首行定位在流式输出期间不生效
+- 修复已归档列表隐藏当前打开的空白会话
+- 修复浏览历史消息时输入框尺寸变化或提问卡片出现将会话拉回底部
+- 修复快速流式输出时消息列在末尾下方越积越远、最新一行落到可视区之外，滑动时长改为跟着输出到达的节奏
+
+### 移除
+
+- 移除对 dsh 0.2.2-rc.1 之前版本的支持，升级本插件前请先把 DeepSeek Harness 升级到 0.2.2-rc.1 或更新版本
+- 移除侧栏的「会话按日期排列」开关，日期分段成为默认排法，顶行的铃铛随手换回宿主的按工作区分组
+
+<h3 id="en-0.19.10">New Features</h3>
+
+- Add retract and edit to a message the reader sent, each forking ahead of the message, retract putting its text back in the new session's composer and edit sending the amended text
+- Add a Question card restyle switch that keeps the host's own question card when off
+- Add persistent manual unread marks in session menus with clearing on a later visit
+- Add a side choice for the running marker, at the trailing end by default, with the left side returning it to the host's leading slot and keeping that band reserved so a third-party leading star no longer covers the title's first glyph
+
+### Improvements
+
+- Judge a batch of page changes once for all of its subscribers
+- Show the clock and copy buttons under a message the reader sent only while the pointer is on it, as Claude Code does
+- Improve the question card to match the composer's width and balance its title lines
+- Show the skin's own buttons and titles with the host's tooltip bubble instead of the browser's native one
+- Show the background opacity row only while a wallpaper plugin is active
+
+### Bug Fixes
+
+- Fix the answer first-line anchor doing nothing while an answer streams
+- Fix the archived list hiding the blank conversation that is open
+- Fix composer resizing or question cards pulling the conversation to the bottom while reading earlier messages
+- Fix the message column piling up below the tail during a fast stream until the newest line sat off screen, with the slide now timed to the pace the answer arrives
+
+### Removals
+
+- Remove support for dsh before 0.2.2-rc.1; upgrade DeepSeek Harness to 0.2.2-rc.1 or later before updating this plugin
+- Remove the Group sessions by date switch; the date grouping is the default order and the top row's bell still returns to the host's workspace grouping
+
 ## [0.19.9] - 2026-11-05
 
 [中文](#cn-0.19.9) | [English](#en-0.19.9)

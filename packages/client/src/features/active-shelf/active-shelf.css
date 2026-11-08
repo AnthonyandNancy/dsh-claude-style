@@ -23,6 +23,8 @@ body[data-dsh-claude-style] .dsh-claude-active-shelf-trigger {
   border: 0;
   border-radius: 6px;
   background: transparent;
+  /* 与标题行里宿主那两枚分区图标共用同一个令牌（二级墨色）：工作区视图与它们同色，
+     日期视图取同一张卡的强调色，两种排法在墨色上就分得开。 */
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
   transition:
@@ -30,8 +32,9 @@ body[data-dsh-claude-style] .dsh-claude-active-shelf-trigger {
     color var(--dsh-claude-duration-feedback) var(--dsh-claude-ease-standard);
 }
 
+/* 与宿主标题行里的图标按钮同一个悬停底色，墨色同时提到正文墨色。 */
 body[data-dsh-claude-style] .dsh-claude-active-shelf-trigger:hover {
-  background: var(--dsw-alias-bg-base);
+  background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
 }
 
@@ -48,8 +51,8 @@ body[data-dsh-claude-style] .dsh-claude-active-shelf-trigger-icon {
   height: 16px;
 }
 
-/* 日期视图开着时铃铛带背光：读者按它换的是整个列表的排法，这一枚就该一直亮着，
-   只是亮法是一层淡淡的品牌色底、不是换了颜色 —— 圆点仍然只代表「有会话在跑」。 */
+/* 日期视图开着时铃铛是按下态：墨色与背光都取配色卡自己的强调色，读者按它换的是
+   整个列表的排法，这一枚就一直亮着。 */
 body[data-dsh-claude-style][data-dsh-claude-date-groups] .dsh-claude-active-shelf-trigger {
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent);
   color: var(--dsw-alias-brand-primary);
