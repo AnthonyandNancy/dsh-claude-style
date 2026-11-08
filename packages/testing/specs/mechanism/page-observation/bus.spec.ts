@@ -139,6 +139,18 @@ test('a page-wide subscription hears nothing that changed outside its own subtre
   expect(seen).toEqual([])
 })
 
+test('a beforePaint subscription runs in the batch itself, ahead of the plain subscriptions deferred to a task', async () => {
+  const root = host()
+  const heard: string[] = []
+  // cost: D40 — the branch's own callback ordering is the subject; no layout is read.
+  cleanups.push(subscribeMutations(root, { childList: true, subtree: true, beforePaint: true }, () => heard.push('now')))
+  cleanups.push(subscribeMutations(root, { childList: true, subtree: true }, () => heard.push('later')))
+  const big = document.createElement('div')
+  for (let index = 0; index < 200; index += 1) big.append(document.createElement('i'))
+  root.append(big)
+  await expect.poll(() => heard).toEqual(['now', 'later'])
+})
+
 test('a subscription hears nothing that changed before it was made', async () => {
   const root = host()
   const seen: MutationRecord[] = []
