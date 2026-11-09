@@ -383,7 +383,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * step afterwards. The shift the boxes ask for is measured and written in the
    * same frame's read and write phases (placeForPaint), not here.
    */
-  const stopMutations = subscribeMutations(document.body, { childList: true, subtree: true, beforePaint: true }, () => {
+  const stopMutations = subscribeMutations(document.body, { label: 'view-tabs', childList: true, subtree: true, beforePaint: true }, () => {
     syncTitlebar()
     const found = findStrip()
     if (found === null) return

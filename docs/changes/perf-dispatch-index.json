@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-09",
+  "group": "improvements",
+  "order": 30,
+  "external": false,
+  "zh": "改善长会话与流式输出中的页面变化分发、部件标记和帧内同步开销",
+  "en": "Reduce page-change dispatch, part marking and in-frame sync work in long sessions and streams"
+}

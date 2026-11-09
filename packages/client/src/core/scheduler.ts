@@ -6,6 +6,7 @@ import { onModelCopyLoaded } from '../features/model/model-copy'
 import { recordPassReading } from './frame-metrics'
 import { subscribePageHidden } from './page-visibility'
 import { loadPrefs, refreshMotionAttribute, subscribePrefs } from './prefs'
+import { PASS_READINGS } from 'virtual:dsh-claude-style/generated'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import type { FooterHandle } from '../features/account/account-footer'
 import type { BanHandle } from '../features/ban-screen/ban-screen'
@@ -93,6 +94,7 @@ export function installScheduler(ctx: HostContext, ui: Ui, features: HandleName[
     start: loadPrefs,
     systemMotionChanged: refreshMotionAttribute,
     observeSidebarWidth,
-    reportPass: recordPassReading,
+    // A published build compiles the reading away, so the pass pays no clock read.
+    reportPass: PASS_READINGS ? recordPassReading : undefined,
   })
 }

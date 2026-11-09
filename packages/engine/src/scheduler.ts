@@ -1,5 +1,5 @@
 import { COMPOSER_CARD_SELECTOR, CONVERSATION_HEADER_SLOT_SELECTOR, CONVERSATION_SCROLL_SELECTOR, SIDEBAR_SLOT_SELECTOR } from '@dsh-claude-style/contracts/dom'
-import { closestComposerCard, findComposerCard, findConversationScroller, hostLocale, pageHidden } from './host'
+import { closestComposerCard, findConversationScroller, hostLocale, observeComposerCards, pageHidden } from './host'
 import type { HostContext } from './host'
 import { observeSize, subscribeMutations } from './bus'
 import { requestFrame } from './frame'
@@ -28,6 +28,9 @@ export type RepositionReason = 'scroll' | 'viewport' | 'composer'
  * read; a change it cannot read skips it for that frame.
  */
 export type WakeReason = 'content' | 'sidebar' | 'sidebar-width' | 'composer' | 'header' | 'viewport' | 'other'
+
+/** Every reason a pass can carry, for the reading that lists them all. */
+const WAKE_REASONS: readonly WakeReason[] = ['content', 'sidebar', 'sidebar-width', 'composer', 'header', 'viewport', 'other']
 
 /**
  * A feature's handle on the shared `ui` registry. Every hook is optional: the
@@ -115,8 +118,17 @@ export interface SchedulerSources {
   start(): void
   /** The system's reduced-motion flag flipped: the skin's own attribute follows it. */
   systemMotionChanged(): void
-  /** Told after every pass, for the page's own cost readings. */
-  reportPass?(reading: { measures: number, syncs: number }): void
+  /** Told after every pass, for the page's own cost readings; only a reading-enabled build asks for it. */
+  reportPass?(reading: {
+    measures: number
+    syncs: number
+    measureMs: number
+    syncMs: number
+    /** Each called handle's own wall clock, by name; absent from a build with no readings. */
+    hooks: Record<string, { measure: number, sync: number }>
+    /** The wake reasons this pass carried. */
+    reasons: WakeReason[]
+  }): void
   /**
    * The sidebar column's own width, as a change of boxes rather than of
    * structure. The one owner of the size observation is the engine; the skin
@@ -179,9 +191,29 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     }
   }
 
+  /** Whether the pointer's own activity has already been passed on in this frame. */
+  let pointerActivityQueued = false
+
   /** The reader is at the page: every feature with an `onActivity` hears it. */
   function onGlobalActivity() {
     dispatch('onActivity')
+  }
+
+  /**
+   * A pointer sweep is the same activity whatever its distance: pass it on once
+   * per frame rather than once per event. Key and press paths stay immediate.
+   * The frame is `requestFrame`'s, so the teardown cancels the queued pass with
+   * every other task rather than leaving a timer behind.
+   */
+  function onPointerMove() {
+    if (pointerActivityQueued) return
+    pointerActivityQueued = true
+    requestFrame({
+      write() {
+        pointerActivityQueued = false
+        if (!stopped) onGlobalActivity()
+      },
+    })
   }
 
   function onGlobalPointerDown(e: PointerEvent) {
@@ -235,7 +267,7 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   }
 
   document.addEventListener('pointerdown', onGlobalPointerDown)
-  document.addEventListener('pointermove', onGlobalActivity, { passive: true })
+  document.addEventListener('pointermove', onPointerMove, { passive: true })
   document.addEventListener('keydown', onGlobalKeyDown, true)
   document.addEventListener('input', onComposerInput, true)
   document.addEventListener('compositionend', onComposerInput, true)
@@ -355,6 +387,21 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   // The card resizing moves the anchors pinned to it with no window resize:
   // re-pin in the same frame, or a JS-pinned control trails the reflow.
   const onCardResize = () => { dispatch('reposition', 'composer') }
+  // The first card is the one that matters; the registry answers it in the
+  // batch that mounted it, so the pass never walks the document for it.
+  const composerCards = observeComposerCards()
+  /**
+   * Follow the main composer card's size. The registry itself stands current
+   * from the bus, so a pass only moves the observer when the first card changed.
+   */
+  function followComposerCard() {
+    const currentCard = composerCards.all()[0] ?? null
+    if (currentCard === observedCard) return
+    if (stopCardSize !== null) stopCardSize()
+    stopCardSize = null
+    observedCard = currentCard
+    if (observedCard) stopCardSize = observeSize(observedCard, onCardResize)
+  }
 
   /** Failed passes in a row after which one of a feature's hooks is switched off. */
   const FAILURE_LIMIT = 3
@@ -462,6 +509,12 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     let measured = false
     let measures = 0
     let syncs = 0
+    /** The read and write phases' wall clock, kept only where a reader asks for the readings. */
+    const timing = sources.reportPass !== undefined
+    let measureMs = 0
+    let syncMs = 0
+    /** The handles this pass called, with what each one cost. */
+    const hooks: Record<string, { measure: number, sync: number }> = {}
     /** Whether one handle's turn is skipped: a batch it cannot read, or a reason it does not declare. */
     const skips = (handle: FeatureHandle | undefined, content: boolean, reasons: Set<WakeReason> | null) => {
       if (handle === undefined) return true
@@ -471,13 +524,17 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
       return true
     }
     const runMeasures = (content: boolean, reasons: Set<WakeReason> | null) => {
+      const started = timing ? performance.now() : 0
       for (const name of features) {
         const handle = handleOf(name)
         if (skips(handle, content, reasons)) continue
         if (handle === undefined || typeof handle.measure !== 'function') continue
         measures += 1
+        const hookAt = timing ? performance.now() : 0
         runMeasure(name)
+        if (timing) (hooks[name] ??= { measure: 0, sync: 0 }).measure += performance.now() - hookAt
       }
+      if (timing) measureMs += performance.now() - started
     }
     cancelPass = requestFrame({
       read() {
@@ -500,21 +557,31 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
           // feature writes.
           runMeasures(content, reasons)
         }
+        const startedSync = timing ? performance.now() : 0
         for (const name of features) {
           const handle = handleOf(name)
           if (skips(handle, content, reasons)) continue
           if (handle === undefined || typeof handle.sync !== 'function') continue
           syncs += 1
+          const hookAt = timing ? performance.now() : 0
           runSync(name)
+          if (timing) (hooks[name] ??= { measure: 0, sync: 0 }).sync += performance.now() - hookAt
         }
-        if (typeof sources.reportPass === 'function') sources.reportPass({ measures, syncs })
-        const currentCard = findComposerCard()
-        if (currentCard !== observedCard) {
-          if (stopCardSize !== null) stopCardSize()
-          stopCardSize = null
-          observedCard = currentCard
-          if (observedCard) stopCardSize = observeSize(observedCard, onCardResize)
+        if (timing) syncMs += performance.now() - startedSync
+        if (typeof sources.reportPass === 'function') {
+          sources.reportPass({
+            measures,
+            syncs,
+            measureMs: Math.round(measureMs * 10) / 10,
+            syncMs: Math.round(syncMs * 10) / 10,
+            hooks: Object.fromEntries(Object.entries(hooks).map(([name, reading]) => [
+              name,
+              { measure: Math.round(reading.measure * 10) / 10, sync: Math.round(reading.sync * 10) / 10 },
+            ])),
+            reasons: reasons === null ? [...WAKE_REASONS] : [...reasons],
+          })
         }
+        followComposerCard()
       },
     })
   }
@@ -526,6 +593,7 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
   // no feature reads. A batch the conversation column holds alone (streaming)
   // asks for the pass its readers need and skips the page-wide ones.
   const stopMutations = subscribeMutations(document.body, {
+    label: 'scheduler',
     childList: true,
     characterData: true,
     subtree: true,
@@ -605,8 +673,9 @@ export function installScheduler<Name extends string>(ctx: HostContext, ui: Sche
     if (stopCardSize !== null) stopCardSize()
     stopCardSize = null
     observedCard = null
+    composerCards.release()
     document.removeEventListener('pointerdown', onGlobalPointerDown)
-    document.removeEventListener('pointermove', onGlobalActivity)
+    document.removeEventListener('pointermove', onPointerMove)
     document.removeEventListener('keydown', onGlobalKeyDown, true)
     document.removeEventListener('input', onComposerInput, true)
     document.removeEventListener('compositionend', onComposerInput, true)

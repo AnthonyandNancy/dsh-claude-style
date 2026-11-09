@@ -59,6 +59,7 @@ function resetCounters(page) {
     window.__longSession.queries = 0
     window.__longSession.layoutReads = 0
     window.__dshPassReadings?.clear()
+    window.__dshMutationReadings?.clear()
   })
 }
 
@@ -74,6 +75,7 @@ async function measureTurn(page, prompt) {
 async function read(page) {
   return page.evaluate(() => {
     const passes = window.__dshPassReadings ? window.__dshPassReadings.read() : []
+    const mutations = window.__dshMutationReadings ? window.__dshMutationReadings.read() : null
     return {
       frames: window.__longSession.frames.slice(),
       longtasks: window.__longSession.longtasks.slice(),
@@ -83,6 +85,7 @@ async function read(page) {
       layoutReads: window.__longSession.layoutReads,
       passes,
       passReadings: window.__dshPassReadings !== undefined,
+      mutations,
     }
   })
 }
@@ -191,7 +194,9 @@ function longSessionScenario({ check }) {
       }
       const readings = `rows ${short.rows} → ${measured.rows} (×${ratio.toFixed(2)}), queries ${short.queries} → ${measured.queries}, ` +
         `long tasks ${shortCost.longTotal}ms → ${longCost.longTotal}ms, p95 ${shortCost.p95}ms → ${longCost.p95}ms, ` +
-        `pass measures ${passMeasures}, syncs ${passSyncs}, bound ${PASS_CALLS}, layout reads ${measured.layoutReads}, bound ${LAYOUT_READS}`
+        `pass measures ${passMeasures}, syncs ${passSyncs}, measure ms ${Math.max(0, ...measured.passes.map((reading) => reading.measureMs ?? 0))}, ` +
+        `sync ms ${Math.max(0, ...measured.passes.map((reading) => reading.syncMs ?? 0))}, bound ${PASS_CALLS}, layout reads ${measured.layoutReads}, bound ${LAYOUT_READS}, ` +
+        `bus batches ${measured.mutations?.batches ?? 0}, callbacks ${measured.mutations?.callbacks ?? 0}, routing ${Math.round((measured.mutations?.routingMs ?? 0) * 10) / 10}ms`
       rounds.push(
         check('两轮量的是同一个长度比：会话长了几倍，这一轮的量也长了几倍',
           ratio >= GROWTH_RATIO && measured.rows > short.rows,

@@ -431,7 +431,7 @@ export function install(ctx: HostContext, ui: FeatureUi<typeof manifest>) {
    * `observeMatches` listens without `beforePaint`, so on a large batch it
    * is a task late and the card this batch mounted is not in its list yet.
    */
-  const stopMutations = subscribeMutations(document.body, { childList: true, subtree: true, beforePaint: true }, (records) => {
+  const stopMutations = subscribeMutations(document.body, { label: 'composer', childList: true, subtree: true, beforePaint: true }, (records) => {
     const pending = addedCards(records).filter(card => !markedForPaint(card))
     if (pending.length === 0) return
     readState()

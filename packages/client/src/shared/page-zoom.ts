@@ -49,8 +49,12 @@ export function sidebarDragging() {
  */
 export function projectPageZoomFactor() {
   const factor = pageZoomFactor()
-  if (factor === 1) document.body.style.removeProperty(PAGE_ZOOM_VAR)
-  else document.body.style.setProperty(PAGE_ZOOM_VAR, pageZoomText(factor))
+  if (factor === 1) {
+    if (document.body.style.getPropertyValue(PAGE_ZOOM_VAR) !== '') document.body.style.removeProperty(PAGE_ZOOM_VAR)
+  } else {
+    const value = pageZoomText(factor)
+    if (document.body.style.getPropertyValue(PAGE_ZOOM_VAR) !== value) document.body.style.setProperty(PAGE_ZOOM_VAR, value)
+  }
 }
 
 /** A measured length or coordinate, in the pixels the page's own styles read. */

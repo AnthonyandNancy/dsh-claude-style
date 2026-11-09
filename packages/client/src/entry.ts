@@ -1,5 +1,6 @@
 import { ACCOUNT_MENU_ATTR, HANDOFF_ATTR, HERO_MENU_ATTR, HOLDS_ATTR, MORE_MENU_ATTR, PACKAGE_NAME, PART_ATTR, QUIET_ATTR, READER_HOLD_ATTR } from './constants'
-import { installParts } from '@dsh-claude-style/engine/parts'
+import { clearPartsDiagnostics, installParts, readPartsDiagnostics, setPartsDiagnostics } from '@dsh-claude-style/engine/parts'
+import { clearMutationDiagnostics, readMutationDiagnostics, setMutationDiagnostics } from '@dsh-claude-style/engine/bus'
 import { installPageScale } from './shared/page-scale'
 import { adoptSkin } from '@dsh-claude-style/engine/skin'
 import { motionReduced } from './core/prefs'
@@ -43,7 +44,15 @@ adoptSkin({
 parkForeignSheets()
 
 // The long-session lane reads the pass counts; a published page carries none.
-if (PASS_READINGS) Object.assign(window, { __dshPassReadings: { read: readPassReadings, clear: clearPassReadings } })
+if (PASS_READINGS) {
+  setMutationDiagnostics(true)
+  setPartsDiagnostics(true)
+  Object.assign(window, {
+    __dshPassReadings: { read: readPassReadings, clear: clearPassReadings },
+    __dshMutationReadings: { read: readMutationDiagnostics, clear: clearMutationDiagnostics },
+    __dshPartsReadings: { read: readPartsDiagnostics, clear: clearPartsDiagnostics },
+  })
+}
 
 /**
  * Whether a feature comes and goes during the generation: its preference is a

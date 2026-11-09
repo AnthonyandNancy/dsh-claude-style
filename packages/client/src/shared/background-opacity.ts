@@ -31,6 +31,10 @@ export function backgroundOpacityPercent(stored: string) {
 export function projectBackgroundOpacity() {
   const stored = document.body.getAttribute(BACKGROUND_OPACITY_ATTR)
   const factor = stored === null ? 1 : backgroundOpacityOf(stored)
-  if (factor === 1) document.body.style.removeProperty(BACKGROUND_OPACITY_VAR)
-  else document.body.style.setProperty(BACKGROUND_OPACITY_VAR, String(factor))
+  if (factor === 1) {
+    if (document.body.style.getPropertyValue(BACKGROUND_OPACITY_VAR) !== '') document.body.style.removeProperty(BACKGROUND_OPACITY_VAR)
+  } else {
+    const value = String(factor)
+    if (document.body.style.getPropertyValue(BACKGROUND_OPACITY_VAR) !== value) document.body.style.setProperty(BACKGROUND_OPACITY_VAR, value)
+  }
 }

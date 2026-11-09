@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 test('a pass reports one measure and one sync per handle that implements them', async () => {
-  const readings: { measures: number, syncs: number }[] = []
+  const readings: { measures: number, syncs: number, measureMs: number, syncMs: number, hooks: Record<string, { measure: number; sync: number }>, reasons: string[] }[] = []
   const ui = {
     retire: () => {},
     schedule: () => {},
@@ -33,5 +33,10 @@ test('a pass reports one measure and one sync per handle that implements them', 
   ui.schedule?.()
   ui.one.sync()
   await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-  expect(readings).toEqual([{ measures: 1, syncs: 2 }])
+  expect(readings.map(({ measures, syncs }) => ({ measures, syncs }))).toEqual([{ measures: 1, syncs: 2 }])
+  expect(readings[0].measureMs).toBeGreaterThanOrEqual(0)
+  expect(readings[0].syncMs).toBeGreaterThanOrEqual(0)
+  expect(readings[0].hooks.one).toEqual({ measure: expect.any(Number), sync: expect.any(Number) })
+  expect(readings[0].hooks.two).toEqual({ measure: 0, sync: expect.any(Number) })
+  expect(readings[0].reasons).toContain('other')
 })

@@ -46,6 +46,48 @@ export interface PartsVocabulary extends PartsTableVocabulary {
 /** The vocabulary the current generation installed, or null before one did. */
 let adopted: PartsVocabulary | null = null
 
+/** What the marking pass cost across the page's batches; a published build asks for none. */
+export interface PartsDiagnosticsReading {
+  walks: number
+  nodesVisited: number
+  markChanges: number
+  walkMs: number
+  holdRereads: number
+  holdMs: number
+}
+
+let diagnosing = false
+/** Elements the walk has entered in the operation being measured. */
+let walkedNodes = 0
+const diagnostics: PartsDiagnosticsReading = {
+  walks: 0,
+  nodesVisited: 0,
+  markChanges: 0,
+  walkMs: 0,
+  holdRereads: 0,
+  holdMs: 0,
+}
+
+/** Turn the marking pass's readings on or off: one boolean test on a published page. */
+export function setPartsDiagnostics(on: boolean) {
+  diagnosing = on
+}
+
+/** A copy of the marking pass's cost readings. */
+export function readPartsDiagnostics(): PartsDiagnosticsReading {
+  return { ...diagnostics }
+}
+
+/** Empty the marking pass's readings. */
+export function clearPartsDiagnostics() {
+  diagnostics.walks = 0
+  diagnostics.nodesVisited = 0
+  diagnostics.markChanges = 0
+  diagnostics.walkMs = 0
+  diagnostics.holdRereads = 0
+  diagnostics.holdMs = 0
+}
+
 /**
  * The last generation whose marking pass installed: a teardown that finds a
  * newer one here leaves the marks standing, because they are the newer one's.
@@ -135,6 +177,66 @@ let HOLD_ATTRIBUTES = new Set<string>()
 /** How many held nodes keep each relation's mark on an element. */
 const HOLD_COUNTS = new Map<Element, Map<string, number>>()
 
+/**
+ * The held nodes under each ancestor, per relation. A holder that arrives after
+ * the nodes it holds, or changes a part that turns it into a holder, re-answers
+ * only the held nodes in its own subtree instead of walking every held node on
+ * the page.
+ */
+let HOLD_UNDER = new WeakMap<Element, Map<string, Set<Element>>>()
+/**
+ * The ancestors one held node was indexed under, by relation. A node detached
+ * before its removal record is read keeps the list, so the index can drop the
+ * node from the ancestors that held it before the move.
+ */
+let HOLD_BY_NODE = new WeakMap<Element, Map<string, Set<Element>>>()
+
+/** Remember `node` under every ancestor, so a later holder change finds it without a page walk. */
+function indexHeldNode(name: string, node: Element) {
+  const ancestors = new Set<Element>()
+  for (let ancestor = node.parentElement; ancestor !== null; ancestor = ancestor.parentElement) {
+    let relations = HOLD_UNDER.get(ancestor)
+    if (relations === undefined) {
+      relations = new Map()
+      HOLD_UNDER.set(ancestor, relations)
+    }
+    const nodes = relations.get(name) ?? new Set<Element>()
+    nodes.add(node)
+    relations.set(name, nodes)
+    ancestors.add(ancestor)
+  }
+  let byName = HOLD_BY_NODE.get(node)
+  if (byName === undefined) {
+    byName = new Map()
+    HOLD_BY_NODE.set(node, byName)
+  }
+  byName.set(name, ancestors)
+}
+
+/** Forget one held node under the ancestors it was indexed under, detached or not. */
+function unindexHeldNode(name: string, node: Element) {
+  const byName = HOLD_BY_NODE.get(node)
+  const ancestors = byName?.get(name)
+  if (byName === undefined || ancestors === undefined) return
+  for (const ancestor of ancestors) {
+    const relations = HOLD_UNDER.get(ancestor)
+    const nodes = relations?.get(name)
+    if (relations === undefined || nodes === undefined) continue
+    nodes.delete(node)
+    if (nodes.size > 0) continue
+    relations.delete(name)
+    if (relations.size === 0) HOLD_UNDER.delete(ancestor)
+  }
+  byName.delete(name)
+  if (byName.size === 0) HOLD_BY_NODE.delete(node)
+}
+
+/** File one held node under the ancestors it stands under now. */
+function refileHeldNode(name: string, node: Element) {
+  unindexHeldNode(name, node)
+  if (node.isConnected) indexHeldNode(name, node)
+}
+
 /** Write one element's mark from its counts, or take the attribute off when nothing holds. */
 function writeHolds(element: Element) {
   const counts = HOLD_COUNTS.get(element)
@@ -205,8 +307,15 @@ function remark(state: HoldState, node: Element, next: Element[]): boolean {
   const before = state.held.get(node)
   if (before !== undefined && sameHolders(before, next)) return false
   if (before !== undefined) for (const holder of before) removeMark(holder, state.spec.name)
-  if (next.length === 0) state.held.delete(node)
-  else state.held.set(node, next)
+  if (next.length === 0) {
+    state.held.delete(node)
+    unindexHeldNode(state.spec.name, node)
+  } else {
+    state.held.set(node, next)
+    // The node may have moved: rebuild its ancestor index at the place it holds now.
+    unindexHeldNode(state.spec.name, node)
+    indexHeldNode(state.spec.name, node)
+  }
   for (const holder of next) addMark(holder, state.spec.name)
   return true
 }
@@ -225,7 +334,13 @@ function applyHolds(node: Element): boolean {
     const was = state.held.has(node)
     const held = node.matches(state.spec.held)
     if (!was && !held) continue
-    if (remark(state, node, held ? holdersOf(state.spec, node) : [])) changed = true
+    const next = held ? holdersOf(state.spec, node) : []
+    // A node the walk revisits may have moved without its holders changing;
+    // its ancestor index is still the one from the old place. File it where it
+    // stands before the comparison. A holder change re-files it in `remark`.
+    const before = state.held.get(node)
+    if (was && held && before !== undefined && sameHolders(before, next)) refileHeldNode(state.spec.name, node)
+    if (remark(state, node, next)) changed = true
   }
   return changed
 }
@@ -237,6 +352,7 @@ function dropHolds(node: Element): boolean {
     const holders = state.held.get(node)
     if (holders === undefined) continue
     state.held.delete(node)
+    unindexHeldNode(state.spec.name, node)
     for (const holder of holders) removeMark(holder, state.spec.name)
     changed = true
   }
@@ -253,9 +369,22 @@ function dropHolds(node: Element): boolean {
 function remarkInside(element: Element): boolean {
   let changed = false
   for (const state of HOLD_STATES) {
-    for (const [node, holders] of state.held) {
-      if (node === element || !element.contains(node)) continue
-      if (remark(state, node, holdersOf(state.spec, node))) changed = true
+    // Only the held nodes this element is an ancestor of can have had their
+    // holders moved by a change here; every other held node keeps its answer.
+    const indexed = HOLD_UNDER.get(element)?.get(state.spec.name)
+    if (indexed === undefined) continue
+    for (const node of [...indexed]) {
+      const holders = state.held.get(node)
+      if (holders === undefined) {
+        unindexHeldNode(state.spec.name, node)
+        continue
+      }
+      // The move can leave the holder list alone — a node carried between two
+      // boxes that both hold it — while the ancestors it is filed under changed.
+      // File it where it stands now, so a later holder change reaches it.
+      const next = holdersOf(state.spec, node)
+      if (sameHolders(holders, next)) refileHeldNode(state.spec.name, node)
+      if (remark(state, node, next)) changed = true
     }
   }
   return changed
@@ -333,6 +462,7 @@ function lookupsBelow(element: Element, lookups: readonly RegionLookup[]): reado
  * it.
  */
 function walk(element: Element, inherited: readonly RegionLookup[], roots: Map<string, string> | null): boolean {
+  if (diagnosing) walkedNodes += 1
   let lookups = inherited
   let childRoots: Map<string, string> | null = null
   if (element.matches(ANCHOR_SELECTOR)) {
@@ -343,12 +473,21 @@ function walk(element: Element, inherited: readonly RegionLookup[], roots: Map<s
     }
   }
   let changed = writeParts(element, lookups, roots)
+  if (changed) diagnostics.markChanges += 1
   const below = lookupsBelow(element, lookups)
   for (const child of element.children) if (walk(child, below, childRoots)) changed = true
   if (applyHolds(element)) changed = true
   // The element's own mark decides whether its ancestors are a holder or a
   // scope for the nodes under it, so a mark written here re-answers them.
-  if (changed) remarkInside(element)
+  if (changed) {
+    const holdAt = diagnosing ? performance.now() : 0
+    const rereads = remarkInside(element)
+    if (diagnosing) {
+      diagnostics.holdRereads += 1
+      diagnostics.holdMs += performance.now() - holdAt
+    }
+    if (rereads) changed = true
+  }
   return changed
 }
 
@@ -360,7 +499,14 @@ function walk(element: Element, inherited: readonly RegionLookup[], roots: Map<s
  */
 export function markPartsWithin(root: Element) {
   const { lookups, roots } = contextAt(root)
+  const started = diagnosing ? performance.now() : 0
+  if (diagnosing) walkedNodes = 0
   walk(root, lookups, roots)
+  if (diagnosing) {
+    diagnostics.walks += 1
+    diagnostics.nodesVisited += walkedNodes
+    diagnostics.walkMs += performance.now() - started
+  }
 }
 
 /** Take every part and hold mark off, for the teardown. */
@@ -371,6 +517,8 @@ export function clearParts(root: ParentNode = document) {
   }
   for (const state of HOLD_STATES) state.held.clear()
   HOLD_COUNTS.clear()
+  HOLD_UNDER = new WeakMap()
+  HOLD_BY_NODE = new WeakMap()
 }
 
 /**
@@ -399,11 +547,21 @@ export function installParts(next: PartsVocabulary, onMarked?: () => void) {
   ANCHOR_SELECTOR = partRegions(next).map((region) => region.within).join(', ')
   SKIP_SELECTOR = partRegions(next).flatMap((region) => region.skip === undefined ? [] : [region.skip]).join(', ')
   HOLD_STATES = holdRelations(next).map((spec) => ({ spec, held: new Map() }))
+  HOLD_UNDER = new WeakMap()
+  HOLD_BY_NODE = new WeakMap()
   HELD_SELECTOR = holdRelations(next).map((relation) => relation.held).join(', ')
   HOLD_ATTRIBUTES = new Set(holdRelations(next).flatMap((relation) => relation.attributes))
   const settle = () => { if (onMarked !== undefined) onMarked() }
+  const initialAt = diagnosing ? performance.now() : 0
+  if (diagnosing) walkedNodes = 0
   if (walk(document.body, [], null)) settle()
+  if (diagnosing) {
+    diagnostics.walks += 1
+    diagnostics.nodesVisited += walkedNodes
+    diagnostics.walkMs += performance.now() - initialAt
+  }
   const stop = subscribeMutations(document.body, {
+    label: 'parts',
     childList: true,
     subtree: true,
     attributes: true,
@@ -422,7 +580,9 @@ export function installParts(next: PartsVocabulary, onMarked?: () => void) {
     // features' schedule, and that one still waits for its frame.
     beforePaint: true,
   }, (records) => {
+    const batchAt = diagnosing ? performance.now() : 0
     let changed = false
+    walkedNodes = 0
     for (const record of records) {
       if (record.type === 'attributes') {
         if (record.target instanceof Element) {
@@ -453,6 +613,11 @@ export function installParts(next: PartsVocabulary, onMarked?: () => void) {
         const { lookups, roots } = contextAt(node)
         if (walk(node, lookups, roots)) changed = true
       }
+    }
+    if (diagnosing) {
+      diagnostics.walks += 1
+      diagnostics.nodesVisited += walkedNodes
+      diagnostics.walkMs += performance.now() - batchAt
     }
     if (changed) settle()
   })

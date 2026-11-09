@@ -5,7 +5,7 @@
 import { installScheduler } from '@dsh-claude-style/engine/scheduler'
 import { cleanupWith } from './teardown'
 
-export function installedScheduler(ui: Record<string, unknown>, features: string[], pass: (reading: { measures: number, syncs: number }) => void) {
+export function installedScheduler(ui: Record<string, unknown>, features: string[], pass: (reading: { measures: number, syncs: number, measureMs: number, syncMs: number, hooks: Record<string, { measure: number, sync: number }>, reasons: string[] }) => void) {
   const stop = installScheduler({ get: () => undefined } as never, ui as never, features as never, {
     copyChange: [], refresh: [], start: () => {}, systemMotionChanged: () => {}, reportPass: pass,
   })

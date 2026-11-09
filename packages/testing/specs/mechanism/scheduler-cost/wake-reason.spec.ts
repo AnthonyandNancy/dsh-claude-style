@@ -18,7 +18,7 @@ async function passAfter(ui: Record<string, unknown>, options?: { contentOnly?: 
 }
 
 test('a reason skips a handle that does not declare it, and counts only the hooks it called', async () => {
-  const readings: { measures: number, syncs: number }[] = []
+  const readings: { measures: number, syncs: number, measureMs: number, syncMs: number, hooks: Record<string, { measure: number; sync: number }>, reasons: string[] }[] = []
   const calls: string[] = []
   const ui = installedScheduler({
     retire: () => {},
@@ -30,7 +30,10 @@ test('a reason skips a handle that does not declare it, and counts only the hook
   calls.length = 0
   await passAfter(ui, { reason: 'sidebar' })
   expect(calls).toEqual(['side', 'anything'])
-  expect(readings.at(-1)).toEqual({ measures: 1, syncs: 2 })
+  const last = readings.at(-1)!
+  expect({ measures: last.measures, syncs: last.syncs }).toEqual({ measures: 1, syncs: 2 })
+  expect(last.measureMs).toBeGreaterThanOrEqual(0)
+  expect(last.syncMs).toBeGreaterThanOrEqual(0)
 })
 
 test('a handle that declares no reason still wakes for every change', async () => {

@@ -6,6 +6,7 @@ import type { PrefKey, Prefs } from '../constants'
 import type { HostContext } from '@dsh-claude-style/engine/host'
 import { clampPrefs, PREFS } from '@dsh-claude-style/contracts/prefs'
 import { notifyAll } from '@dsh-claude-style/engine/notify'
+import { setAttributeIfChanged } from '@dsh-claude-style/engine/dom'
 import { createSettingsBinding } from '@dsh-claude-style/engine/settings-binding'
 import { pageOwner } from '../shared/visual-owner'
 
@@ -182,8 +183,11 @@ export function adoptPrefs(next: Prefs) {
   if (pageOwner() === null) {
     for (const mirror of MIRRORS) {
       const value = mirror.value(next)
-      if (value === false) document.body.removeAttribute(mirror.attr)
-      else document.body.setAttribute(mirror.attr, String(value))
+      if (value === false) {
+        if (document.body.hasAttribute(mirror.attr)) document.body.removeAttribute(mirror.attr)
+      } else {
+        setAttributeIfChanged(document.body, mirror.attr, String(value))
+      }
     }
     // After the attribute, which is what it reads: the sheet's half of the page's
     // scale, written here rather than a frame later by the scale watcher.
@@ -217,7 +221,7 @@ export function systemPrefersReducedMotion() {
  */
 function writeMotionAttribute(mode: string) {
   const reduced = mode === MOTION_REDUCED || (mode !== MOTION_FULL && systemPrefersReducedMotion())
-  document.body.setAttribute(MOTION_ATTR, reduced ? MOTION_REDUCED : MOTION_FULL)
+  setAttributeIfChanged(document.body, MOTION_ATTR, reduced ? MOTION_REDUCED : MOTION_FULL)
 }
 
 /**

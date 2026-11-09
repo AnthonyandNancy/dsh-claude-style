@@ -21,6 +21,9 @@ export default spec({ page: 'model-account' }, ({ test }) => {
     t.expectThat.equal(firstLevel[1].includes('GLM-5.3'), true, `the chosen provider follows (${firstLevel[1]})`)
     t.expectThat.equal(await t.read.text(t.surface('model.rule')), 'DeepSeek Account', 'the account rule names the provider above its models')
     t.expectThat.equal(await t.page.locator(t.surface('model.row')).first().getAttribute('aria-checked'), 'true', 'the account model is the one in force')
+    // A described row carries the mark its two-line floor keys on; the rule
+    // reads one attribute rather than matching every row's subtree with :has().
+    t.expectThat.equal(await t.page.locator(`[${t.surface.attribute('model.row-description')}]`).count(), 2, 'each described row carries the mark')
   })
 
   test('the account that leads the first level does not repeat behind More models', async (t) => {

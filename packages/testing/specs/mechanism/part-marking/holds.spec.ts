@@ -95,6 +95,31 @@ test('a holder that takes its attribute after the node it holds still marks it',
   expect(holds(phase)).toBe(hold('conversation-scroll'))
 })
 
+test('a held node carried between two holders keeps the mark and follows the holder it stands under', async () => {
+  const conversation = region(CONVERSATION_SCROLL_SELECTOR)
+  const first = conversation.box('composerStack', document.createElement('div'))
+  const second = conversation.box('composerStack', document.createElement('div'))
+  mount(slot(CONVERSATION_SCROLL_SELECTOR, first, second))
+  install()
+  const card = hostElement(COMPOSER_CARD_SELECTOR)
+  const left = first.firstElementChild!
+  const right = second.firstElementChild!
+  left.append(card)
+  await settle()
+  expect(holds(left)).toBe(hold('composer-card'))
+  expect(holds(right)).toBeNull()
+  // The card moves to the other holder in one batch: the holder list changes,
+  // and a later change to the new holder must still reach the node through the
+  // index it is filed under now.
+  right.append(card)
+  await settle()
+  expect(holds(left)).toBeNull()
+  expect(holds(right)).toBe(hold('composer-card'))
+  card.remove()
+  await settle()
+  expect(holds(right)).toBeNull()
+})
+
 test('a dialog holding the host\'s statistics reads the mark, and one outside the relation does not', () => {
   const relation = holdRelations(TEST_PARTS).find(candidate => candidate.name === 'host-stats')!
   const withStats = hostElement(relation.holder)

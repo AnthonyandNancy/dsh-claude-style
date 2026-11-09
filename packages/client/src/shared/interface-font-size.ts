@@ -16,6 +16,10 @@ export function interfaceFontSizePercent(stored: string) {
 export function projectInterfaceFontSize() {
   const stored = document.body.getAttribute(INTERFACE_FONT_SIZE_ATTR)
   const factor = stored === null ? 1 : interfaceFontSizeOf(stored)
-  if (factor === 1) document.body.style.removeProperty(INTERFACE_FONT_SIZE_VAR)
-  else document.body.style.setProperty(INTERFACE_FONT_SIZE_VAR, String(factor))
+  if (factor === 1) {
+    if (document.body.style.getPropertyValue(INTERFACE_FONT_SIZE_VAR) !== '') document.body.style.removeProperty(INTERFACE_FONT_SIZE_VAR)
+  } else {
+    const value = String(factor)
+    if (document.body.style.getPropertyValue(INTERFACE_FONT_SIZE_VAR) !== value) document.body.style.setProperty(INTERFACE_FONT_SIZE_VAR, value)
+  }
 }

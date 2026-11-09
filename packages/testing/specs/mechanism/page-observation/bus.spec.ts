@@ -261,6 +261,25 @@ test('a match carried into the page with its own subtree in one batch is registe
   expect(matches.all()).toEqual([inner, sibling, inside])
 })
 
+test('a match moved between carriers in one batch stays registered at its new place', async () => {
+  const root = host()
+  const from = document.createElement('section')
+  const to = document.createElement('section')
+  root.append(from, to)
+  const moved = probed('i')
+  const inside = probed('b')
+  moved.append(inside)
+  from.append(moved)
+  const matches = observeMatches<HTMLElement>(`[${PROBE}]`)
+  cleanups.push(() => matches.release())
+  expect(matches.all()).toEqual([moved, inside])
+  // One batch, as a host rebuild does: the subtree leaves one carrier and
+  // lands in the other before the batch reaches the registry.
+  to.append(moved)
+  await settle()
+  expect(matches.all()).toEqual([moved, inside])
+})
+
 test('a match registry keeps the same array until a match changes', async () => {
   const root = host()
   const only = probed('i')

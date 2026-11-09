@@ -34,6 +34,7 @@ export function samplerInit(name) {
     state.longtasks.length = 0
     state.extraFrames = 0
     window.__dshPassReadings?.clear()
+    window.__dshMutationReadings?.clear()
   }
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) state.longtasks.push(Math.round(entry.duration))
@@ -74,6 +75,7 @@ export function readSample(page, name, extra = []) {
     const gaps = state.frames.slice().sort((left, right) => left - right)
     const at = (share) => gaps.length === 0 ? 0 : gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * share))]
     const passes = window.__dshPassReadings ? window.__dshPassReadings.read() : []
+    const mutations = window.__dshMutationReadings ? window.__dshMutationReadings.read() : null
     const reading = {
       passReadings: window.__dshPassReadings !== undefined,
       passes: passes.length,
@@ -87,6 +89,12 @@ export function readSample(page, name, extra = []) {
       over33: gaps.filter((value) => value > 33).length,
       longTotal: state.longtasks.reduce((sum, duration) => sum + duration, 0),
       extraFrames: state.extraFrames,
+      busBatches: mutations?.batches ?? 0,
+      busCallbacks: mutations?.callbacks ?? 0,
+      busRoutingMs: mutations?.routingMs ?? 0,
+      busDispatchMs: mutations?.dispatchMs ?? 0,
+      busRemounts: mutations?.remounts ?? 0,
+      busSubscribers: mutations?.subscribers ?? {},
     }
     for (const field of fields) reading[field] = passes.map((entry) => entry[field])
     return reading

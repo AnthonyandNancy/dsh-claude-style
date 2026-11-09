@@ -3,9 +3,21 @@
  * pass called, and how many layout reads the frame made. The long-session lane
  * reads them; nothing in the product acts on them.
  */
+/** One feature hook's wall clock inside a pass, rounded to a tenth of a millisecond. */
+export interface HookReading {
+  readonly measure: number
+  readonly sync: number
+}
+
 export interface PassReading {
   measures: number
   syncs: number
+  /** Wall clock spent in the read phase, rounded to a tenth of a millisecond. */
+  measureMs: number
+  /** Wall clock spent in the write phase, rounded to a tenth of a millisecond. */
+  syncMs: number
+  /** Each called handle's own cost in this pass, by the name it registered under. */
+  hooks: Record<string, HookReading>
 }
 
 /** The most readings kept: a long lane reads once, and a forgotten page keeps no more than this. */

@@ -26,6 +26,8 @@ import { skin } from './skin'
  */
 
 export interface MutationOptions {
+  /** A short name for this subscription in the debug readings (the target alone is not enough). */
+  label?: string
   childList?: boolean
   characterData?: boolean
   characterDataOldValue?: boolean
@@ -61,12 +63,92 @@ const mutationSubscriptionSet = new Set<MutationSubscription>()
 const subscriptionsByTarget = new Map<Node, Set<MutationSubscription>>()
 let mutationObserver: MutationObserver | null = null
 
+/** What one subscription cost across the page's batches, kept only while the debug readings are on. */
+export interface MutationSubscriberReading {
+  calls: number
+  records: number
+  callbackMs: number
+}
+
+/** The bus's own cost readings: only a debug build turns them on. */
+export interface MutationDiagnosticsReading {
+  batches: number
+  records: number
+  deliveries: number
+  callbacks: number
+  routingMs: number
+  dispatchMs: number
+  remounts: number
+  deferredBatches: number
+  subscribers: Record<string, MutationSubscriberReading>
+}
+
+let diagnosing = false
+const diagnostics: MutationDiagnosticsReading = {
+  batches: 0,
+  records: 0,
+  deliveries: 0,
+  callbacks: 0,
+  routingMs: 0,
+  dispatchMs: 0,
+  remounts: 0,
+  deferredBatches: 0,
+  subscribers: {},
+}
+
 /**
- * Whether a record's target sits inside one observed target, per record and
- * target: a session switch hands one batch to a dozen subscriptions, and each
- * used to walk the record's own ancestors up to the target again.
+ * Turn the bus's cost readings on or off. A published build leaves them off
+ * through the generated flag, so the hot path pays one boolean test.
  */
-const containment = new WeakMap<MutationRecord, Map<Node, boolean>>()
+export function setMutationDiagnostics(on: boolean) {
+  diagnosing = on
+}
+
+/** A copy of the bus's cost readings, for the performance lanes. */
+export function readMutationDiagnostics(): MutationDiagnosticsReading {
+  return {
+    ...diagnostics,
+    subscribers: Object.fromEntries(Object.entries(diagnostics.subscribers).map(([name, reading]) => [name, { ...reading }])),
+  }
+}
+
+/** Empty the readings without changing whether they are collected. */
+export function clearMutationDiagnostics() {
+  diagnostics.batches = 0
+  diagnostics.records = 0
+  diagnostics.deliveries = 0
+  diagnostics.callbacks = 0
+  diagnostics.routingMs = 0
+  diagnostics.dispatchMs = 0
+  diagnostics.remounts = 0
+  diagnostics.deferredBatches = 0
+  diagnostics.subscribers = {}
+}
+
+/** A subscription's debug name: its own label, else the shape of the node it watches. */
+function subscriberName(subscription: MutationSubscription) {
+  if (subscription.options.label !== undefined) return subscription.options.label
+  const target = subscription.target
+  if (target === document) return 'document'
+  if (target instanceof Element) {
+    const id = target.id === '' ? '' : `#${target.id}`
+    const first = target.classList[0]
+    return `${target.tagName.toLowerCase()}${id}${first === undefined ? '' : `.${first}`}`
+  }
+  return target.nodeName.toLowerCase()
+}
+
+/** Add one callback's cost to the subscription's reading. */
+function diagnose(subscription: MutationSubscription, records: number, callbackMs: number) {
+  if (!diagnosing) return
+  diagnostics.deliveries += 1
+  diagnostics.callbacks += 1
+  const name = subscriberName(subscription)
+  const reading = diagnostics.subscribers[name] ??= { calls: 0, records: 0, callbackMs: 0 }
+  reading.calls += 1
+  reading.records += records
+  reading.callbackMs += callbackMs
+}
 
 /**
  * The quiet verdict is a property of the record, not of the subscription asking:
@@ -100,20 +182,6 @@ function pageWide(target: Node) {
   return target === document || target === document.documentElement || target === document.body
 }
 
-/** Whether `record.target` sits inside `target`, answered once per record and target. */
-function sitsInside(target: Node, record: MutationRecord) {
-  let perTarget = containment.get(record)
-  if (perTarget === undefined) {
-    perTarget = new Map()
-    containment.set(record, perTarget)
-  }
-  const known = perTarget.get(target)
-  if (known !== undefined) return known
-  const inside = target.contains(record.target)
-  perTarget.set(target, inside)
-  return inside
-}
-
 /** Whether a subscription's own options select this record. */
 function selects(subscription: MutationSubscription, record: MutationRecord) {
   const options = subscription.options
@@ -127,7 +195,9 @@ function selects(subscription: MutationSubscription, record: MutationRecord) {
   const target = subscription.target
   if (record.target !== target) {
     if (options.subtree !== true) return false
-    if (!sitsInside(target, record) && !(pageWide(target) && !record.target.isConnected)) return false
+    // The audience builder has already established that the target holds the
+    // record, or that it is page-wide and the record's node left the page.
+    if (!target.contains(record.target) && !(pageWide(target) && !record.target.isConnected)) return false
   }
   if (options.skipQuiet !== true) return true
   const known = quietVerdicts.get(record)
@@ -188,7 +258,9 @@ function dispatchSlices() {
       const selected = batch.records.filter(record => selects(subscription, record))
       if (selected.length === 0) continue
       // One subscriber's error must neither stop the others nor vanish (D12).
+      const callbackAt = diagnosing ? performance.now() : 0
       try { subscription.callback(selected) } catch (error) { reportError(error) }
+      if (diagnosing) diagnose(subscription, selected.length, performance.now() - callbackAt)
       if (performance.now() - started >= DISPATCH_BUDGET_MS) {
         scheduleDispatch()
         return
@@ -196,13 +268,16 @@ function dispatchSlices() {
     }
     deferredBatches.shift()
   }
+  if (diagnosing) diagnostics.dispatchMs += performance.now() - started
 }
 
 /** Hand one subscription the records it selects, isolating its failure from the rest (D12). */
 function deliver(subscription: MutationSubscription, records: MutationRecord[]) {
   const selected = records.filter(record => selects(subscription, record))
   if (selected.length === 0) return
+  const callbackAt = diagnosing ? performance.now() : 0
   try { subscription.callback(selected) } catch (error) { reportError(error) }
+  if (diagnosing) diagnose(subscription, selected.length, performance.now() - callbackAt)
 }
 
 /**
@@ -212,25 +287,39 @@ function deliver(subscription: MutationSubscription, records: MutationRecord[]) 
  */
 function audienceFor(records: MutationRecord[]): MutationSubscription[] {
   const wanted = new Set<MutationSubscription>()
-  for (const [target, subscriptions] of subscriptionsByTarget) {
-    for (const record of records) {
-      if (target === record.target || target.contains(record.target) || (pageWide(target) && !record.target.isConnected)) {
-        for (const subscription of subscriptions) wanted.add(subscription)
-        break
-      }
+  // Walk each record's own ancestors once and look the node up in the target
+  // index: a batch of n records over a page with m observed targets costs
+  // n × depth instead of n × m `contains` walks. A record whose node has left
+  // the page still reaches the page-wide targets, as its own observer would
+  // have heard it before the removal.
+  for (const record of records) {
+    for (let node: Node | null = record.target; node !== null; node = node.parentNode) {
+      const subscriptions = subscriptionsByTarget.get(node)
+      if (subscriptions !== undefined) for (const subscription of subscriptions) wanted.add(subscription)
+    }
+    if (record.target.isConnected) continue
+    for (const [target, subscriptions] of subscriptionsByTarget) {
+      if (!pageWide(target)) continue
+      for (const subscription of subscriptions) wanted.add(subscription)
     }
   }
   return mutationSubscriptions.filter(subscription => wanted.has(subscription))
 }
 
-function routeRecords(records: MutationRecord[], audience: MutationSubscription[] = audienceFor(records)) {
+function routeRecords(records: MutationRecord[], audience?: MutationSubscription[]) {
+  const routeAt = diagnosing ? performance.now() : 0
+  const listeners = audience ?? audienceFor(records)
+  if (diagnosing) {
+    diagnostics.batches += 1
+    diagnostics.records += records.length
+  }
   // A batch a session switch mounts is scanned after the paint: its callbacks
   // are idempotent passes, and nothing the reader is looking at in that frame
   // is drawn by them. A subscription whose writes the paint reads asks for
   // `beforePaint` and runs now (D40's consequence names both timings).
   if (batchWeight(records) > SYNC_BATCH_WEIGHT) {
     const deferred: MutationSubscription[] = []
-    for (const subscription of audience) {
+    for (const subscription of listeners) {
       // A subscription an earlier callback in this batch removed hears nothing more.
       if (!mutationSubscriptionSet.has(subscription)) continue
       if (subscription.options.beforePaint === true) deliver(subscription, records)
@@ -238,19 +327,23 @@ function routeRecords(records: MutationRecord[], audience: MutationSubscription[
     }
     if (deferred.length > 0) {
       deferredBatches.push({ records, audience: deferred, cursor: 0 })
+      if (diagnosing) diagnostics.deferredBatches += 1
       scheduleDispatch()
     }
+    if (diagnosing) diagnostics.routingMs += performance.now() - routeAt
     return
   }
-  for (const subscription of audience) {
+  for (const subscription of listeners) {
     // A subscription an earlier callback in this batch removed hears nothing more.
     if (!mutationSubscriptionSet.has(subscription)) continue
     deliver(subscription, records)
   }
+  if (diagnosing) diagnostics.routingMs += performance.now() - routeAt
 }
 
 /** Attach the observer to every subscribed target with the union of their options. */
 function refreshMutationObserver(joining?: MutationSubscription) {
+  if (diagnosing && mutationObserver !== null) diagnostics.remounts += 1
   const pending = mutationObserver?.takeRecords() ?? []
   mutationObserver?.disconnect()
   if (mutationSubscriptions.length === 0) {
@@ -382,7 +475,7 @@ function registryFor(selector: string): MatchRegistry {
     // addition went into answers as the node does: that card is there already.
     stop: () => {},
   }
-  registry.stop = subscribeMutations(document.body, { childList: true, subtree: true }, records => {
+  registry.stop = subscribeMutations(document.body, { label: 'matches', childList: true, subtree: true }, records => {
     let changed = false
     // The batch is one frame of the host's mounting, and a subtree usually
     // arrives with its own children in the same batch: the additions are
@@ -390,11 +483,25 @@ function registryFor(selector: string): MatchRegistry {
     // already holds is reached by that carrier's own walk instead of being
     // matched and searched again. Work a stream pays for every token.
     const batch = new Set<Element>()
+    const removed = new Set<Node>()
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (node instanceof Element) batch.add(node)
       }
-      if (record.removedNodes.length > 0) changed = true
+      for (const node of record.removedNodes) removed.add(node)
+    }
+    // Settle a removal before additions are registered: the same batch can move
+    // a measured subtree out of one carrier and into another, and a removal
+    // resolved afterwards would delete the node from the place it now holds.
+    // A node this batch re-added is a move, not a departure.
+    for (const node of batch) removed.delete(node)
+    for (const node of removed) {
+      if (!(node instanceof Element)) continue
+      if (registry.items.delete(node)) changed = true
+      const inside = node.querySelectorAll(selector)
+      for (let index = 0; index < inside.length; index += 1) {
+        if (registry.items.delete(inside[index])) changed = true
+      }
     }
     const added = [...batch]
     // The position of every addition in the batch: an ancestor the batch has
@@ -462,9 +569,11 @@ export function observeMatches<T extends Element>(selector: string, onChange?: (
   let released = false
   return {
     all() {
+      // A node detached in the same task is settled on the read itself: the
+      // removal batch reaches the registry after that task. A node removed in a
+      // delivered batch has already left `items`, so the scan that follows it
+      // finds every element still connected.
       if (registry.ordered !== null && registry.ordered.every(item => item.isConnected)) return registry.ordered as T[]
-      // An element that left the document is no match, whether or not this
-      // reader's own task has been handed the removal record yet.
       registry.ordered = [...registry.items].filter(item => item.isConnected).sort(byDocumentOrder)
       registry.items = new Set(registry.ordered)
       return registry.ordered as T[]
