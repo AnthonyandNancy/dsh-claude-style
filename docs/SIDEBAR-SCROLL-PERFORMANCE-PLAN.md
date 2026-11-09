@@ -55,7 +55,6 @@
 | `packages/testing/data/check-numbers.json` | 检查数字 | 修改：由工具重写 |
 | `docs/SIDEBAR-SCROLL-PERFORMANCE.md` | 根因与方案 | 已新建 |
 | `docs/SIDEBAR-SCROLL-PERFORMANCE-PLAN.md` | 本计划 | 新建 |
-| `docs/changes/sidebar-scroll-performance.json` | 变更记录 | 新建 |
 | `README.md`、`README.en.md` | 文档索引 | 修改：加入两份新文档 |
 
 表里不带反引号的文件是这份计划要新建的，目前还不存在；带反引号的路径都能在仓库里打开。
@@ -1119,7 +1118,6 @@ git commit -m "docs(perf): 补齐侧栏拖动与会话滚动的真实读数"
 **Files:**
 - Modify: `README.md:93-103`
 - Modify: `README.en.md:104-116`
-- Create: `docs/changes/sidebar-scroll-performance.json`
 - Test: `npm run changelog:check`、`npm run docs:check`、`npm run lint`
 
 **Interfaces:**
@@ -1128,7 +1126,7 @@ git commit -m "docs(perf): 补齐侧栏拖动与会话滚动的真实读数"
 
 - [ ] **Step 1: 写变更片段**
 
-新建 `docs/changes/sidebar-scroll-performance.json`：
+在 `docs/CHANGELOG.md` 的 `0.20.1` 一节里核对本项的实际交付描述：
 
 ```json
 {
@@ -1189,7 +1187,7 @@ git commit -m "docs(perf): 索引侧栏拖动与会话滚动方案"
 - Task 5：拖动标记由皮肤在侧栏手柄的按下与释放上写入 `data-dsh-claude-sidebar-dragging`，并登记在 `packages/testing/data/surface.json`；框架轨道、侧栏宽度与手柄位置逐帧跟随指针，工作区分段控件、页脚账户行、标题尺寸与侧栏状态在拖动期不重算。宽度与手柄在按住期间保留宿主原值会让页面缩放下的边界比指针多走一个缩放倍数，该做法已移除。
 - 复核修复：侧栏根节点在拖动中被宿主重画时，新的尺寸观察不再把同一宽度当作新宽度；`row-skip` 在拖动期间保留跳排标记，释放后一次重排；输入卡的响应式工具栏与统计行的几何读取在拖动期暂停。
 - Task 6：`scripts/css.mjs` 按 `@popover-open` 把 `shared/popover.css` 切成 `base` 与 `popover` 两段；账号菜单、自建账户抽屉、回合导航与 `setMenuPopoverOpen()` 的卡片都持有打开态分组，关闭动画结束后释放。
-- Task 8：README 两份索引与 `docs/changes/sidebar-scroll-performance.json` 已就位。
+- Task 8：README 两份索引已就位，变更描述已进入 `docs/CHANGELOG.md` 的 `0.20.1` 一节。
 
 ### 离线读数
 

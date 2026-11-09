@@ -2,6 +2,62 @@
 
 All notable changes to `dsh-claude-style` are documented here, newest first.
 
+## [0.20.1] - 2026-11-09
+
+[中文](#cn-0.20.1) | [English](#en-0.20.1)
+
+<h3 id="cn-0.20.1">体验优化</h3>
+
+- 改善对话区宽度手柄的亮线，等指针停住后再出现，不再被掠过的指针闪出
+- 改善侧栏「更多」菜单的外观，使其在启动按钮右侧弹出、宽度随内容收缩、图标与文字同色、投影更深，并把侧栏顶部的图标改为更大的无底色图标
+- 新增长会话与流式输出的性能方案，按观察分发、帧内同步、布局读写、合成路径与首屏装载分别列出改法、可见结果不变的依据与验收读数
+- 新增性能方案对应的修改计划，按测量、观察分发、唤醒原因、版次缓存、读写分处、合成路径、延后装载与页隐藏拆分任务
+- 改善长会话的页面变化分发
+- 改善流式输出的一帧同步开销
+- 改善重复帧的清单遍历开销
+- 改善首屏装载，会话先画出来
+- 改善页面离开屏幕时的脚本时钟占用
+- 改善弹层未打开时的合成开销
+- 把会话滚动与窗口尺寸变化分开、窗口滚动只重定位打开的表面，并按页面与表面分片挂载样式表
+- 改善侧栏拖动和会话滚动时的流畅度
+
+### 问题修复
+
+- 修复日期视图开着时从视图菜单改的分组被按回单列表
+- 修复图片预览蒙版被全局对话框尺寸上限缩小、右侧与底部各留出 48px
+- 修复输入框底行右侧上下文圆环比左侧权限控件多缩进一层、两端视觉边界不对称
+- 修复第三方插件插入的标签与宿主标签不垂直居中，标签栏按一个 segment 排它的每一个直接子元素
+- 修复「标题进入顶栏」把模式与智能体芯片留在标题下方另起一行，顶栏因此高出一整行、分割线随之下沉
+- 修复关闭「对话 / 轨迹标签条」后宿主标签条仍被皮肤的悬停淡出、下划线隐藏与内边距接管
+- 修复模型列表的每一行在分钟切换后多出一个峰谷电价表
+- 修复顶栏接管标题后头部按宿主最小高度撑开、标签下划线与分割线之间多出一段空白
+
+<h3 id="en-0.20.1">Improvements</h3>
+
+- Improve the conversation width handle's bar to appear once the pointer rests, no longer flashing at a pointer passing over
+- Improve the sidebar More menu so it opens beside its launcher, fits its rows, draws icons in the text colour and casts a deeper shadow, and give the sidebar's top rows larger icons without a backing disc
+- Add a performance plan for long sessions and streaming output, with each change to observation routing, in-frame sync, layout reads, compositing and first-load loading naming its method, its proof of unchanged visible results and its acceptance readings
+- Add the implementation plan for the performance work, split into measurement, observation routing, wake reasons, versioned reads, read and write phases, compositing, deferred loading and page visibility
+- Route each batch of page changes only to the subscriptions that can read it
+- Skip a feature's turn for a change it declares it does not read
+- Skip walking the composer cards, stats and folds when their match lists have not changed
+- Load the header band and the view tabs in deferred chunks so the conversation paints first
+- Stop the script clocks while the page is off screen and restart them on the return
+- Drop the backdrop blur from a closed popover card
+- Separate conversation scrolling from viewport changes, reposition only open surfaces on window scroll, and mount stylesheets in parts by page and surface
+- Improve smoothness when dragging the sidebar and scrolling a conversation
+
+### Bug Fixes
+
+- Fix a grouping picked from the view menu being forced back to one list while the date view is on
+- Fix the image preview backdrop being shrunk by the global dialog size cap, leaving a 48px gap at its right and bottom edges
+- Fix the context ring at the composer row's right end sitting a layer further in than the permission control at its left
+- Fix a third-party plugin's tab in the conversation strip sitting off the host tabs' centre line, by stating one segment box for every child of the tablist
+- Fix the preset picker and the session chips standing on a second row under the lifted title, leaving the caption a row taller with its divider sunk below that row
+- Fix the host's own conversation tabs staying under the skin's hover fade, hidden underline and padding after the Chat / Trajectory tabs switch is turned off
+- Fix a second peak rate meter appearing on every model row after a minute rollover
+- Fix the header keeping the host's minimum height once the caption row holds the title, which left a gap between the tab underline and the divider
+
 ## [0.20.0] - 2026-11-07
 
 [中文](#cn-0.20.0) | [English](#en-0.20.0)

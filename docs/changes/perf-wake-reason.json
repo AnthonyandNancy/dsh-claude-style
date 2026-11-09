@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-06",
-  "group": "improvements",
-  "order": 21,
-  "external": false,
-  "zh": "改善流式输出的一帧同步开销",
-  "en": "Skip a feature's turn for a change it declares it does not read"
-}

@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-07",
-  "group": "improvements",
-  "order": 30,
-  "external": false,
-  "zh": "把会话滚动与窗口尺寸变化分开、窗口滚动只重定位打开的表面，并按页面与表面分片挂载样式表",
-  "en": "Separate conversation scrolling from viewport changes, reposition only open surfaces on window scroll, and mount stylesheets in parts by page and surface"
-}

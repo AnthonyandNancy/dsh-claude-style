@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-06",
-  "group": "improvements",
-  "order": 11,
-  "external": false,
-  "zh": "新增性能方案对应的修改计划，按测量、观察分发、唤醒原因、版次缓存、读写分处、合成路径、延后装载与页隐藏拆分任务",
-  "en": "Add the implementation plan for the performance work, split into measurement, observation routing, wake reasons, versioned reads, read and write phases, compositing, deferred loading and page visibility"
-}

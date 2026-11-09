@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-06",
-  "group": "improvements",
-  "order": 10,
-  "external": false,
-  "zh": "新增长会话与流式输出的性能方案，按观察分发、帧内同步、布局读写、合成路径与首屏装载分别列出改法、可见结果不变的依据与验收读数",
-  "en": "Add a performance plan for long sessions and streaming output, with each change to observation routing, in-frame sync, layout reads, compositing and first-load loading naming its method, its proof of unchanged visible results and its acceptance readings"
-}

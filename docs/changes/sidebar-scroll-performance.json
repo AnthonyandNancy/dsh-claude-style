@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-08",
-  "group": "improvements",
-  "order": 40,
-  "external": false,
-  "zh": "改善侧栏拖动和会话滚动时的流畅度",
-  "en": "Improve smoothness when dragging the sidebar and scrolling a conversation"
-}

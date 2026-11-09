@@ -54,7 +54,6 @@
 | | `packages/testing/importance-audit.mjs` | 审计所有皮肤样式片段，而非只读第一张 | 修改 |
 | packages/testing/specs/behaviour/stylesheets/parts.spec.mjs | 分片挂载与外观不变的行为规范 | 新建 |
 | `docs/SCROLL-PERFORMANCE-PLAN.md` | 本计划 | 新建 |
-| `docs/changes/scroll-performance-plan.json` | 变更记录 | 已存在，Task 4 核对 |
 | `README.md`、`README.en.md`、`docs/ARCHITECTURE.md`、`docs/SCROLL-PERFORMANCE.md` | 文档入口与结果回链 | Task 4 修改 |
 
 表里不带反引号的文件是这份计划要新建的，目前还不存在；带反引号的路径都能在仓库里打开。
@@ -1266,7 +1265,6 @@ git commit -m "perf(style): 样式表按页面与表面分片挂载"
 **Files:**
 - Modify: `docs/SCROLL-PERFORMANCE.md`
 - Modify: `docs/SCROLL-PERFORMANCE-PLAN.md`
-- Modify: `docs/changes/scroll-performance-plan.json`
 - Modify: `packages/testing/data/check-numbers.json`
 - Test: 全部既有滚动、行为与外观通道
 
@@ -1359,7 +1357,7 @@ Expected: 全部通过；`scrollPace` 的四条读数在 `bounds.json` 内；`lo
 - 未落地项的原因与它仍然覆盖的风险；
 - `scrollPace` 作为后续回归读数的入口。
 
-把 `docs/changes/scroll-performance-plan.json` 的 `zh` 与 `en` 改成实际交付的一句话，只写最终能力，不写实施过程。
+在 `docs/CHANGELOG.md` 的 `0.20.1` 一节里核对本项的实际交付描述，只写最终能力，不写实施过程。
 
 - [ ] **Step 7: 勾选本计划**
 

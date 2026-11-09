@@ -1,8 +1,0 @@
-{
-  "at": "2026-11-06",
-  "group": "improvements",
-  "order": 22,
-  "external": false,
-  "zh": "改善重复帧的清单遍历开销",
-  "en": "Skip walking the composer cards, stats and folds when their match lists have not changed"
-}
